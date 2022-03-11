@@ -1,0 +1,3 @@
+[submodule "deps/asio2"]
+	path = deps/asio2
+	url = https://github.com/zhllxt/asio2.git
