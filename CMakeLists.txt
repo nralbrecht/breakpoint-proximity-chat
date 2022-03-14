@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.17)
 
-set(PLUGIN_VERSION "0.1.2")
+set(PLUGIN_VERSION "0.1.3")
 
 project(GRBTS3Plugin
     VERSION "${PLUGIN_VERSION}"

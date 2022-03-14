@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#include <math.h>
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,7 +41,7 @@ const char* ts3plugin_name() {
 }
 
 const char* ts3plugin_version() {
-    return "0.1.2";
+    return "0.1.3";
 }
 
 int ts3plugin_apiVersion() {
@@ -282,4 +283,37 @@ void ts3plugin_onClientMoveEvent(uint64 serverConnectionHandlerID, anyID clientI
 
 void ts3plugin_onClientMoveMovedEvent(uint64 serverConnectionHandlerID, anyID clientID, uint64 oldChannelID, uint64 newChannelID, int visibility, anyID moverID, const char* moverName, const char* moverUniqueIdentifier, const char* moveMessage) {
 	Logger::get()->Log("ts3plugin_onClientMoveMovedEvent: %lld %d %lld -> %lld %d %d '%d' '%s' '%s'", serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moverID, moverName, moverUniqueIdentifier, moveMessage);
+}
+
+static inline float db2lin_alt2(float db) {
+    if (db <= -200.0f) return 0.0f;
+    else return exp(db/20  * log(10.0f));   // went mad with ambigous call with 10 (identified as int)
+}
+
+static const float rollOff = -6.0f;
+const float rollOffMaxLin = db2lin_alt2(-200.0f);
+static const float distanceMin = 1.0f;
+static const float distanceMax = 50.0f;
+
+void ts3plugin_onCustom3dRolloffCalculationClientEvent(uint64 serverConnectionHandlerID, anyID clientID, float distance, float* volume) {
+	if ((distanceMax > 0) && (distance >= distanceMax)) {
+		*volume = 0.0f;
+	}
+	else if (distance <= distanceMin) {
+		*volume = 1.0f;
+	}
+	else
+	{
+		distance = distance - distanceMin;
+		if (distance <= 1) {
+			*volume = 1.0f;
+		}
+		else {
+			*volume = db2lin_alt2(log2(distance) * rollOff);
+		}
+
+		if (*volume < rollOffMaxLin) {
+			*volume = rollOffMaxLin;
+		}
+	}
 }

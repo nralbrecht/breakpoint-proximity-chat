@@ -23,6 +23,9 @@ git submodule update
 
 # Change log
 
+## v0.1.3
+- Add custom voice rolloff calculation
+
 ## v0.1.2
 - Every client is now moved to origin when server connection is lost
 - Speeds set to:
