@@ -1,21 +1,8 @@
-/*
- * TeamSpeak 3 demo plugin
- *
- * Copyright (c) 2008-2017 TeamSpeak Systems GmbH
- */
+#pragma once
 
-#ifndef PLUGIN_H
-#define PLUGIN_H
-
-#ifdef WIN32
 #define PLUGINS_EXPORTDLL __declspec(dllexport)
-#else
-#define PLUGINS_EXPORTDLL __attribute__ ((visibility("default")))
-#endif
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 /* Required functions */
 PLUGINS_EXPORTDLL const char* ts3plugin_name();
@@ -143,8 +130,4 @@ PLUGINS_EXPORTDLL const char* ts3plugin_keyDeviceName(const char* keyIdentifier)
 PLUGINS_EXPORTDLL const char* ts3plugin_displayKeyText(const char* keyIdentifier);
 PLUGINS_EXPORTDLL const char* ts3plugin_keyPrefix();
 
-#ifdef __cplusplus
 }
-#endif
-
-#endif

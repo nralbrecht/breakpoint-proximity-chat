@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Windows.h>
 #include <processthreadsapi.h>
 #include <tlhelp32.h>
@@ -11,7 +13,11 @@
 #include <vector>
 #include <stdexcept>
 
+#include "Logger.h"
+
+
 enum GRB_EXE {
+    NOT_FOUND = 0,
     GRB,
     GRB_VULKAN
 };
@@ -20,13 +26,13 @@ typedef enum GRB_EXE GRB_EXE_t;
 struct GRB_State {
     float health;
 
-	float avatar_position[3];
-	float avatar_front[3];
-    float avatar_top[3];
+	float mouthPosition[3];
+	float mouthForward[3];
+    float mouthUp[3];
 
-    float camera_position[3];
-	float camera_front[3];
-    float camera_top[3];
+    float earPosition[3];
+	float earForward[3];
+    float earUp[3];
 };
 typedef struct GRB_State GRB_state_t;
 
@@ -34,10 +40,10 @@ typedef struct GRB_State GRB_state_t;
 class GameHandler
 {
 private:
-    GRB_EXE_t executable;
-    DWORD pid;
-    HANDLE handle;
-    DWORD_PTR base_address;
+    GRB_EXE_t executable = GRB_EXE::NOT_FOUND;
+    DWORD pid = 0;
+    HANDLE handle = NULL;
+    DWORD_PTR base_address = 0;
 
     DWORD getProcessByName(PCSTR name);
     void initBaseAddress();
@@ -58,8 +64,8 @@ public:
     GameHandler();
     ~GameHandler();
 
-    void initialize();
-    void shutdown();
+    void connect();
+    bool isConnected();
 
     GRB_state_t getState();
 };

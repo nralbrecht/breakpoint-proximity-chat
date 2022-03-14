@@ -3,32 +3,7 @@
 
 GameHandler::GameHandler()
 {
-    SetLastError(0);
-
-    pid = getProcessByName("GRB.exe");
-    if (pid == 0) {
-        pid = getProcessByName("GRB_vulkan.exe");
-        if (pid == 0) {
-            throw std::runtime_error("Cant find neither 'GRB.exe' nor 'GRB_vulkan.exe' to init positional audio");
-        }
-        else {
-            executable = GRB_VULKAN;
-        }
-    }
-    else {
-        executable = GRB;
-    }
-
-    openProcessReadable();
-    if (handle == 0) {
-        throw std::runtime_error("Process can not be opened.");
-    }
-
-    initBaseAddress();
-    if (base_address == 0) {
-        close();
-        throw std::runtime_error("Process base address can not be fetched.");
-    }
+    Logger::get()->Log("GameHandler %s", "init");
 }
 
 GameHandler::~GameHandler()
@@ -36,6 +11,62 @@ GameHandler::~GameHandler()
     close();
 }
 
+
+void GameHandler::connect() {
+    Logger::get()->Log("%s", "trying to find processes");
+
+    pid = getProcessByName("GRB.exe");
+    if (pid == 0) {
+        Logger::get()->Log("process not found '%s'", "GRB.exe");
+
+        pid = getProcessByName("GRB_vulkan.exe");
+        if (pid == 0) {
+            Logger::get()->Log("process not found '%s'", "GRB_vulkan.exe");
+
+            executable = GRB_EXE::NOT_FOUND;
+            throw std::runtime_error("Cant find neither 'GRB.exe' nor 'GRB_vulkan.exe' to init positional audio");
+        }
+        else {
+            executable = GRB_EXE::GRB_VULKAN;
+        }
+    }
+    else {
+        executable = GRB_EXE::GRB;
+    }
+
+    Logger::get()->Log("%s", "opening process");
+    openProcessReadable();
+    if (handle == NULL) {
+        pid = 0;
+        executable = GRB_EXE::NOT_FOUND;
+
+        Logger::get()->Log("%s", "can not open process");
+
+        throw std::runtime_error("Process can not be opened.");
+    }
+
+    Logger::get()->Log("%s", "fetching process base address");
+    initBaseAddress();
+    if (base_address == 0) {
+        close();
+        pid = 0;
+        executable = GRB_EXE::NOT_FOUND;
+
+        Logger::get()->Log("%s", "not able to fetch process base address");
+
+        throw std::runtime_error("Process base address can not be fetched.");
+    }
+
+    Logger::get()->Log("%s", "game initialized");
+}
+
+bool GameHandler::isConnected() {
+    if (pid == 0 || handle == NULL || base_address == 0) {
+        return false;
+    }
+
+    return isOpen();
+}
 
 // Helper Functions
 DWORD GameHandler::getProcessByName(PCSTR name) {
@@ -102,11 +133,15 @@ void GameHandler::openProcessReadable() {
 }
 
 void GameHandler::close() {
-    if (CloseHandle(handle)) {
-        handle = NULL;
-    }
-    else {
-        throw std::runtime_error("Could not close process handle.");
+    if (handle != NULL) {
+        if (CloseHandle(handle) == 0) {
+            Logger::get()->Log("error closing handle %p: %d", handle, GetLastError());
+            handle = NULL;
+        }
+        else {
+            // successfully closed
+            handle = NULL;
+        }
     }
 }
 
@@ -251,61 +286,61 @@ GRB_state_t GameHandler::getState() {
 
     // fetch and preprocess data
     // health
-    readVector(health_address, (LPVOID)&(state.health), sizeof(FLOAT));
+    readVector(health_address, (LPVOID)&(state.health), sizeof(float));
 
 	// avatar position
 	float avatar_pos_corrector[3];
 
 	readVector(avatar_position_address, (LPVOID)avatar_pos_corrector, sizeof(float) * 3);
 
-	state.avatar_position[0] = avatar_pos_corrector[0];
-	state.avatar_position[1] = avatar_pos_corrector[2];
-	state.avatar_position[2] = avatar_pos_corrector[1];
+	state.mouthPosition[0] = avatar_pos_corrector[0];
+	state.mouthPosition[1] = avatar_pos_corrector[2];
+	state.mouthPosition[2] = avatar_pos_corrector[1];
 
     // avatar front
 	float avatar_rot_corrector[2];
 	readVector(avatar_rotation_address, (LPVOID)avatar_rot_corrector, sizeof(float) * 2);
 
-	state.avatar_front[0] = avatar_rot_corrector[0];
-	state.avatar_front[1] = 0.0f;
-	state.avatar_front[2] = avatar_rot_corrector[1];
-    normalize(state.avatar_front);
+	state.mouthForward[0] = avatar_rot_corrector[0];
+	state.mouthForward[1] = 0.0f;
+	state.mouthForward[2] = avatar_rot_corrector[1];
+    normalize(state.mouthForward);
 
     // avatar top
-	state.avatar_top[0] = 0.0f;
-	state.avatar_top[1] = 1.0f;
-	state.avatar_top[2] = 0.0f;
+	state.mouthUp[0] = 0.0f;
+	state.mouthUp[1] = 1.0f;
+	state.mouthUp[2] = 0.0f;
 
 	// camera position
 	float camera_pos_corrector[3];
 	readVector(camera_position_address, (LPVOID*)camera_pos_corrector, sizeof(float) * 3);
 
-	state.camera_position[0] = lerp(camera_pos_corrector[0], avatar_pos_corrector[0], 0.5f);
-	state.camera_position[1] = lerp(camera_pos_corrector[2], avatar_pos_corrector[2], 0.5f);
-	state.camera_position[2] = lerp(camera_pos_corrector[1], avatar_pos_corrector[1], 0.5f);
+	state.earPosition[0] = lerp(camera_pos_corrector[0], avatar_pos_corrector[0], 0.5f);
+	state.earPosition[1] = lerp(camera_pos_corrector[2], avatar_pos_corrector[2], 0.5f);
+	state.earPosition[2] = lerp(camera_pos_corrector[1], avatar_pos_corrector[1], 0.5f);
 
-    clampDistance(state.camera_position, state.avatar_position, 2.0f, state.camera_position);
+    clampDistance(state.earPosition, state.mouthPosition, 2.0f, state.earPosition);
 
     // camera front
 	float camera_front_corrector[3];
 	readVector(camera_rotation_address, (LPVOID*)camera_front_corrector, sizeof(float) * 3);
 
-	state.camera_front[0] = camera_front_corrector[0];
-	state.camera_front[1] = camera_front_corrector[2];
-	state.camera_front[2] = camera_front_corrector[1];
-    normalize(state.camera_front);
+	state.earForward[0] = camera_front_corrector[0];
+	state.earForward[1] = camera_front_corrector[2];
+	state.earForward[2] = camera_front_corrector[1];
+    normalize(state.earForward);
 
     // camera top
 	float camera_right_corrector[3];
-	crossProduct(state.camera_front, state.avatar_top, camera_right_corrector);
+	crossProduct(state.earForward, state.mouthUp, camera_right_corrector);
 
 	float camera_top_corrector[3];
-	crossProduct(camera_right_corrector, state.camera_front, camera_top_corrector);
+	crossProduct(camera_right_corrector, state.earForward, camera_top_corrector);
 	normalize(camera_top_corrector);
 
-    state.camera_top[0] = camera_top_corrector[0];
-	state.camera_top[1] = camera_top_corrector[1];
-	state.camera_top[2] = camera_top_corrector[2];
+    state.earUp[0] = camera_top_corrector[0];
+	state.earUp[1] = camera_top_corrector[1];
+	state.earUp[2] = camera_top_corrector[2];
 
     return state;
 }

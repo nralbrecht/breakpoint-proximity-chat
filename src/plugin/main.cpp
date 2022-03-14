@@ -5,15 +5,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <unordered_map>
+
 #include "teamspeak/public_errors.h"
 #include "teamspeak/public_errors_rare.h"
 #include "teamspeak/public_definitions.h"
 #include "teamspeak/public_rare_definitions.h"
 #include "teamspeak/clientlib_publicdefinitions.h"
 #include "ts3_functions.h"
-
 #include "main.h"
 #include "PluginManager.h"
+#include "Logger.h"
 
 
 #define _strcpy(dest, destSize, src) { strncpy(dest, src, destSize - 1); (dest)[destSize - 1] = '\0'; }
@@ -38,7 +40,7 @@ const char* ts3plugin_name() {
 }
 
 const char* ts3plugin_version() {
-    return "0.1.0";
+    return "0.1.2";
 }
 
 int ts3plugin_apiVersion() {
@@ -57,25 +59,100 @@ void ts3plugin_setFunctionPointers(const struct TS3Functions funcs) {
     ts3Functions = funcs;
 }
 
+std::unordered_map<std::string, anyID> uuidForAvailableClients;
+
+std::string mapToString()
+{
+	std::string result = "{";
+    for (auto const &pair: uuidForAvailableClients) {
+        result += "(" + pair.first + ": " + std::to_string(pair.second) + "), ";
+    }
+	return result + "}";
+}
+
+std::string getClientUUID(uint64 serverConnectionHandlerID, anyID clientId) {
+	char* uuidBuffer;
+
+	unsigned int errorCode = ts3Functions.getClientVariableAsString(serverConnectionHandlerID, clientId, ClientProperties::CLIENT_UNIQUE_IDENTIFIER, &uuidBuffer);
+	if (errorCode != ERROR_ok) {
+		Logger::get()->Log("could not get UUID for server %lld and client %d. Error %d", serverConnectionHandlerID, clientId, errorCode);
+		throw std::runtime_error("could not get UUID");
+	}
+
+	std::string uuid(uuidBuffer);
+	ts3Functions.freeMemory(uuidBuffer);
+
+	return uuid;
+}
+
+void addAllCurrentClientsToMap(uint64 serverConnectionHandlerID) {
+	int connectionStatus;
+	if (ts3Functions.getConnectionStatus(serverConnectionHandlerID, &connectionStatus) != ERROR_ok) {
+		Logger::get()->Log("%s", "ts3plugin_addAllCurrentClientsToMap error could not get connection status");
+		return;
+	}
+	if (connectionStatus != ConnectStatus::STATUS_CONNECTION_ESTABLISHED) {
+		return;
+	}
+
+	anyID* clientList;
+	if(ts3Functions.getClientList(serverConnectionHandlerID, &clientList) != ERROR_ok) {
+		Logger::get()->Log("ts3plugin_addAllCurrentClientsToMap error could not get client list: %lld %d %d", serverConnectionHandlerID);
+		return;
+	}
+
+	for (size_t i = 0; true; i++)
+	{
+		anyID clientId = clientList[i];
+
+		if (clientId == 0) {
+			break;
+		}
+		else {
+			std::string clientUUID = getClientUUID(serverConnectionHandlerID, clientId);
+			uuidForAvailableClients[clientUUID] = clientId;
+		}
+	}
+
+	ts3Functions.freeMemory(clientList);
+	Logger::get()->Log("ts3plugin_addAllCurrentClientsToMap map: %s", mapToString().c_str());
+}
+
+
 int ts3plugin_init() {
 	try {
-		pluginManager = std::make_unique<PluginManager>(ts3Functions);
+		Logger::get()->Log("%s", "plugin initializing");
+
+		addAllCurrentClientsToMap(ts3Functions.getCurrentServerConnectionHandlerID());
+		pluginManager = std::make_unique<PluginManager>(ts3Functions, uuidForAvailableClients);
+
+		Logger::get()->Log("%s", "plugin successful initialized");
     	return 0;
 	}
 	catch(const std::exception& e) {
 		// Error intializing plugin manager. Return 1 to indicate error.
+		Logger::get()->Log("plugin init error: '%s'", e.what());
 		ts3Functions.logMessage(e.what(), LogLevel_ERROR, "GRB", ts3Functions.getCurrentServerConnectionHandlerID());
 		return 1;
 	}
 }
 
 void ts3plugin_shutdown() {
-	pluginManager.reset();
-
 	/* Free pluginID if we registered it */
 	if(pluginID) {
 		free(pluginID);
 		pluginID = NULL;
+	}
+
+	try
+	{
+		Logger::get()->Log("%s", "shutting down");
+		pluginManager.reset();
+		Logger::get()->Log("%s", "shutdown");
+	}
+	catch(const std::exception& e)
+	{
+		Logger::get()->Log("%s", e.what());
 	}
 }
 
@@ -108,9 +185,9 @@ const char* ts3plugin_infoTitle() {
  * "data" to NULL to have the client ignore the info data.
  */
 void ts3plugin_infoData(uint64 serverConnectionHandlerID, uint64 id, enum PluginItemType type, char** data) {
-	char* uuid;
-
 	if (type == PLUGIN_CLIENT) {
+		char* uuid;
+
 		if(ts3Functions.getClientVariableAsString(serverConnectionHandlerID, (anyID)id, CLIENT_UNIQUE_IDENTIFIER, &uuid) != ERROR_ok) {
 			printf("Error getting client nickname\n");
 			return;
@@ -151,9 +228,11 @@ void ts3plugin_initHotkeys(struct PluginHotkey*** hotkeys) {
 
 /************************** TeamSpeak callbacks ***************************/
 void ts3plugin_onHotkeyEvent(const char* keyword) {
-	if (pluginManager) {
+	if (!pluginManager) {
 		return;
 	}
+
+	Logger::get()->Log("ts3plugin_onHotkeyEvent: %s", keyword);
 
 	if (strncmp(keyword, "radio_activate", 15) == 0) {
 		pluginManager->radioActivate(true);
@@ -161,4 +240,46 @@ void ts3plugin_onHotkeyEvent(const char* keyword) {
 	else if (strncmp(keyword, "radio_deactivate", 17) == 0){
 		pluginManager->radioActivate(false);
 	}
+}
+
+// teamspeak connection state management
+void ts3plugin_currentServerConnectionChanged(uint64 serverConnectionHandlerID) {
+	Logger::get()->Log("ts3plugin_currentServerConnectionChanged: %lld", serverConnectionHandlerID);
+}
+
+void ts3plugin_onConnectStatusChangeEvent(uint64 serverConnectionHandlerID, int newStatus, unsigned int errorNumber) {
+	Logger::get()->Log("ts3plugin_onConnectStatusChangeEvent: %lld %d %d", serverConnectionHandlerID, newStatus, errorNumber);
+
+	if (newStatus == ConnectStatus::STATUS_CONNECTION_ESTABLISHED) {
+		addAllCurrentClientsToMap(serverConnectionHandlerID);
+	}
+	else if (newStatus == ConnectStatus::STATUS_DISCONNECTED) {
+		uuidForAvailableClients.clear();
+		Logger::get()->Log("ts3plugin_onConnectStatusChangeEvent disconected map: %s", mapToString().c_str());
+	}
+}
+
+void ts3plugin_onClientMoveEvent(uint64 serverConnectionHandlerID, anyID clientID, uint64 oldChannelID, uint64 newChannelID, int visibility, const char* moveMessage) {
+	// TODO: handle moved by server/other client
+
+	Logger::get()->Log("ts3plugin_onClientMoveEvent: %lld %d %lld -> %lld %d '%s'", serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moveMessage);
+	if (oldChannelID == 0) {
+		// joined
+		std::string clientUUID = getClientUUID(serverConnectionHandlerID, clientID);
+		uuidForAvailableClients[clientUUID] = clientID;
+	}
+	else if (newChannelID == 0) {
+		// left
+		for (auto it = uuidForAvailableClients.begin(); it != uuidForAvailableClients.end(); ++it) {
+			if (it->second == clientID) {
+				uuidForAvailableClients.erase(it);
+				break;
+			}
+		}
+	}
+	Logger::get()->Log("ts3plugin_onClientMoveEvent map: %s", mapToString().c_str());
+}
+
+void ts3plugin_onClientMoveMovedEvent(uint64 serverConnectionHandlerID, anyID clientID, uint64 oldChannelID, uint64 newChannelID, int visibility, anyID moverID, const char* moverName, const char* moverUniqueIdentifier, const char* moveMessage) {
+	Logger::get()->Log("ts3plugin_onClientMoveMovedEvent: %lld %d %lld -> %lld %d %d '%d' '%s' '%s'", serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moverID, moverName, moverUniqueIdentifier, moveMessage);
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.17)
 
-set(PLUGIN_VERSION "0.1.0")
+set(PLUGIN_VERSION "0.1.2")
 
 project(GRBTS3Plugin
     VERSION "${PLUGIN_VERSION}"
@@ -8,7 +8,12 @@ project(GRBTS3Plugin
     LANGUAGES "CXX"
 )
 
+set(CMAKE_CXX_STANDARD 20)
+
 include(ExternalProject)
+
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(deps/json)
 
 ExternalProject_Add(pluginsdk
     URL http://dl.4players.de/ts/client/pluginsdk/pluginsdk_3.1.1.1.zip
@@ -24,6 +29,8 @@ add_library(ts3plugin
     src/plugin/main.cpp
     src/plugin/GameHandler.cpp
     src/plugin/PluginManager.cpp
+    src/plugin/NetworkManager.cpp
+    src/plugin/Logger.cpp
 )
 
 target_include_directories(ts3plugin
@@ -33,14 +40,19 @@ target_include_directories(ts3plugin
 )
 
 add_dependencies(ts3plugin pluginsdk)
+target_link_libraries(ts3plugin PUBLIC nlohmann_json::nlohmann_json)
 
 set_target_properties(ts3plugin PROPERTIES OUTPUT_NAME "grb_${PLUGIN_VERSION}")
 
 # server
 add_executable(server
     src/server/main.cpp
+    src/server/StateManager.cpp
 )
 
 target_include_directories(server
     PUBLIC "${CMAKE_SOURCE_DIR}/include"
+    PUBLIC "${CMAKE_SOURCE_DIR}/deps/asio2"
 )
+
+target_link_libraries(server PUBLIC nlohmann_json::nlohmann_json)

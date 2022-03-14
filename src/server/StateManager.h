@@ -1,0 +1,22 @@
+#pragma once
+
+#include "dto.h"
+#include <fstream>
+#include <unordered_map>
+#include <optional>
+
+
+class StateManager
+{
+private:
+    std::ofstream dataLogFile;
+    std::unordered_map<size_t, DTO::ClientState> state;
+public:
+    StateManager();
+    ~StateManager();
+
+    void putClientState(size_t session, DTO::ClientState clientState);
+    void registerSession(size_t session);
+    void clearSession(size_t session);
+    DTO::ServerStateReport getStateReport();
+};
