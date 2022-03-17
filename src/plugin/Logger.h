@@ -7,14 +7,24 @@
 #include <string>
 #include <ctime>
 
+#include "PluginConfig.h"
+
+
+typedef enum LoggerLogLevel {
+    Off = 0,
+    Error,
+    Warn,
+    Info,
+    Verbose
+} LoggerLogLevel;
 
 class Logger
 {
 public:
-    void Log(const std::string& sMessage);
-    void Log(const char * format, ...);
+    void Log(LoggerLogLevel level, const std::string& message);
+    void Log(LoggerLogLevel level, const char * message);
+    void LogF(LoggerLogLevel level, const char * format, ...);
 
-    Logger& operator<<(const std::string& sMessage);
     static Logger* get();
 private:
     Logger();
@@ -23,7 +33,8 @@ private:
 
     const std::string CurrentDateTime();
 
-    static const std::string m_sFileName;
-    static Logger* m_pThis;
-    static std::ofstream m_Logfile;
+    LoggerLogLevel maxLogLevel;
+
+    static Logger* instance;
+    static std::ofstream logfile;
 };

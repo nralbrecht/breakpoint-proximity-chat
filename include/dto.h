@@ -2,6 +2,7 @@
 
 #include "nlohmann/json.hpp"
 #include <unordered_map>
+#include <vector>
 
 namespace DTO {
     struct ClientState {
@@ -24,21 +25,19 @@ namespace DTO {
         j.at("isUsingRadio").get_to(clientState.isUsingRadio);
     }
 
-    struct ServerStateReport {
-        std::unordered_map<std::string, ClientState> clients;
-    };
+    typedef std::vector<ClientState> ServerStateReport;
 
     inline void to_json(nlohmann::json& j, const ServerStateReport& serverStateReport) {
-        j = nlohmann::json::object();
+        j = nlohmann::json::array();
 
-        for (const auto& [_, client] : serverStateReport.clients) {
-            j[client.uuid] = client;
+        for (const auto& client : serverStateReport) {
+            j.push_back(client);
         }
     }
 
     inline void from_json(const nlohmann::json& j, ServerStateReport& serverStateReport) {
-        for (auto& [uuid, client] : j.items()) {
-            serverStateReport.clients[uuid] = client;
+        for (auto& client : j) {
+            serverStateReport.push_back(client);
         }
     }
 }

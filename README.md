@@ -20,8 +20,18 @@ git submodule update
 - Radio blips
 - Radio sound processing
 - When quiting the game the own position is not removed from server
+- Use voice rolloff to hear clients using the radio
 
 # Change log
+
+## v0.1.4
+- Add config
+    - grb/config.json
+- Logger log levels
+    - OFF: 0, ERROR: 1, WARN: 2, VERBOSE: 3
+- Logger add method to log without formating
+- Add ClientStateManager
+- Make server report a simple list
 
 ## v0.1.3
 - Add custom voice rolloff calculation

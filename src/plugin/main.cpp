@@ -21,14 +21,7 @@
 
 #define _strcpy(dest, destSize, src) { strncpy(dest, src, destSize - 1); (dest)[destSize - 1] = '\0'; }
 
-#define PLUGIN_API_VERSION 25
-
-#define PATH_BUFSIZE 512
-#define COMMAND_BUFSIZE 128
 #define INFODATA_BUFSIZE 128
-#define SERVERINFO_BUFSIZE 256
-#define CHANNELINFO_BUFSIZE 512
-#define RETURNCODE_BUFSIZE 128
 
 static char* pluginID = NULL;
 static struct TS3Functions ts3Functions;
@@ -37,123 +30,62 @@ std::unique_ptr<PluginManager> pluginManager = NULL;
 /*********************************** Required functions ************************************/
 
 const char* ts3plugin_name() {
-	return "Tom Clancy's Ghost Recon Breakpoint";
+	return PluginManager::NAME.c_str();
 }
 
 const char* ts3plugin_version() {
-    return "0.1.3";
+    return PluginManager::VERSION.c_str();
 }
 
 int ts3plugin_apiVersion() {
-	return PLUGIN_API_VERSION;
+	return PluginManager::API_VERSION;
 }
 
 const char* ts3plugin_author() {
-    return "superananas";
+    return PluginManager::AUTHOR.c_str();
 }
 
 const char* ts3plugin_description() {
-    return "Provides 3D audio and radio communication for Tom Clancy's Ghost Recon Breakpoint.";
+    return PluginManager::DESCRIPTION.c_str();
 }
 
 void ts3plugin_setFunctionPointers(const struct TS3Functions funcs) {
     ts3Functions = funcs;
 }
 
-std::unordered_map<std::string, anyID> uuidForAvailableClients;
-
-std::string mapToString()
-{
-	std::string result = "{";
-    for (auto const &pair: uuidForAvailableClients) {
-        result += "(" + pair.first + ": " + std::to_string(pair.second) + "), ";
-    }
-	return result + "}";
-}
-
-std::string getClientUUID(uint64 serverConnectionHandlerID, anyID clientId) {
-	char* uuidBuffer;
-
-	unsigned int errorCode = ts3Functions.getClientVariableAsString(serverConnectionHandlerID, clientId, ClientProperties::CLIENT_UNIQUE_IDENTIFIER, &uuidBuffer);
-	if (errorCode != ERROR_ok) {
-		Logger::get()->Log("could not get UUID for server %lld and client %d. Error %d", serverConnectionHandlerID, clientId, errorCode);
-		throw std::runtime_error("could not get UUID");
-	}
-
-	std::string uuid(uuidBuffer);
-	ts3Functions.freeMemory(uuidBuffer);
-
-	return uuid;
-}
-
-void addAllCurrentClientsToMap(uint64 serverConnectionHandlerID) {
-	int connectionStatus;
-	if (ts3Functions.getConnectionStatus(serverConnectionHandlerID, &connectionStatus) != ERROR_ok) {
-		Logger::get()->Log("%s", "ts3plugin_addAllCurrentClientsToMap error could not get connection status");
-		return;
-	}
-	if (connectionStatus != ConnectStatus::STATUS_CONNECTION_ESTABLISHED) {
-		return;
-	}
-
-	anyID* clientList;
-	if(ts3Functions.getClientList(serverConnectionHandlerID, &clientList) != ERROR_ok) {
-		Logger::get()->Log("ts3plugin_addAllCurrentClientsToMap error could not get client list: %lld %d %d", serverConnectionHandlerID);
-		return;
-	}
-
-	for (size_t i = 0; true; i++)
-	{
-		anyID clientId = clientList[i];
-
-		if (clientId == 0) {
-			break;
-		}
-		else {
-			std::string clientUUID = getClientUUID(serverConnectionHandlerID, clientId);
-			uuidForAvailableClients[clientUUID] = clientId;
-		}
-	}
-
-	ts3Functions.freeMemory(clientList);
-	Logger::get()->Log("ts3plugin_addAllCurrentClientsToMap map: %s", mapToString().c_str());
-}
-
-
 int ts3plugin_init() {
 	try {
-		Logger::get()->Log("%s", "plugin initializing");
+		Logger::get()->Log(LoggerLogLevel::Verbose, "plugin initializing");
 
-		addAllCurrentClientsToMap(ts3Functions.getCurrentServerConnectionHandlerID());
-		pluginManager = std::make_unique<PluginManager>(ts3Functions, uuidForAvailableClients);
+		pluginManager = std::make_unique<PluginManager>(ts3Functions);
 
-		Logger::get()->Log("%s", "plugin successful initialized");
+		Logger::get()->Log(LoggerLogLevel::Verbose, "plugin successful initialized");
     	return 0;
 	}
 	catch(const std::exception& e) {
 		// Error intializing plugin manager. Return 1 to indicate error.
-		Logger::get()->Log("plugin init error: '%s'", e.what());
+		Logger::get()->LogF(LoggerLogLevel::Error, "plugin init error: '%s'", e.what());
 		ts3Functions.logMessage(e.what(), LogLevel_ERROR, "GRB", ts3Functions.getCurrentServerConnectionHandlerID());
 		return 1;
 	}
 }
 
 void ts3plugin_shutdown() {
-	/* Free pluginID if we registered it */
-	if(pluginID) {
-		free(pluginID);
-		pluginID = NULL;
-	}
-
 	try
 	{
-		Logger::get()->Log("%s", "shutting down");
+		Logger::get()->Log(LoggerLogLevel::Verbose, "shutting down");
 		pluginManager.reset();
-		Logger::get()->Log("%s", "shutdown");
+		Logger::get()->Log(LoggerLogLevel::Verbose, "shutdown");
+
+		/* Free pluginID if we registered it */
+		if(pluginID) {
+			free(pluginID);
+			pluginID = NULL;
+		}
 	}
 	catch(const std::exception& e)
 	{
-		Logger::get()->Log("%s", e.what());
+		Logger::get()->LogF(LoggerLogLevel::Error, "error on shutdown: %s", e.what());
 	}
 }
 
@@ -190,7 +122,7 @@ void ts3plugin_infoData(uint64 serverConnectionHandlerID, uint64 id, enum Plugin
 		char* uuid;
 
 		if(ts3Functions.getClientVariableAsString(serverConnectionHandlerID, (anyID)id, CLIENT_UNIQUE_IDENTIFIER, &uuid) != ERROR_ok) {
-			printf("Error getting client nickname\n");
+			Logger::get()->Log(LoggerLogLevel::Error, "ts3plugin_infoData: Error getting client nickname");
 			return;
 		}
 
@@ -229,91 +161,38 @@ void ts3plugin_initHotkeys(struct PluginHotkey*** hotkeys) {
 
 /************************** TeamSpeak callbacks ***************************/
 void ts3plugin_onHotkeyEvent(const char* keyword) {
-	if (!pluginManager) {
-		return;
-	}
-
-	Logger::get()->Log("ts3plugin_onHotkeyEvent: %s", keyword);
-
-	if (strncmp(keyword, "radio_activate", 15) == 0) {
-		pluginManager->radioActivate(true);
-	}
-	else if (strncmp(keyword, "radio_deactivate", 17) == 0){
-		pluginManager->radioActivate(false);
+	if (pluginManager) {
+		pluginManager->onHotkeyEvent(keyword);
 	}
 }
 
 // teamspeak connection state management
 void ts3plugin_currentServerConnectionChanged(uint64 serverConnectionHandlerID) {
-	Logger::get()->Log("ts3plugin_currentServerConnectionChanged: %lld", serverConnectionHandlerID);
+	if (pluginManager) {
+		pluginManager->currentServerConnectionChanged(serverConnectionHandlerID);
+	}
 }
 
 void ts3plugin_onConnectStatusChangeEvent(uint64 serverConnectionHandlerID, int newStatus, unsigned int errorNumber) {
-	Logger::get()->Log("ts3plugin_onConnectStatusChangeEvent: %lld %d %d", serverConnectionHandlerID, newStatus, errorNumber);
-
-	if (newStatus == ConnectStatus::STATUS_CONNECTION_ESTABLISHED) {
-		addAllCurrentClientsToMap(serverConnectionHandlerID);
-	}
-	else if (newStatus == ConnectStatus::STATUS_DISCONNECTED) {
-		uuidForAvailableClients.clear();
-		Logger::get()->Log("ts3plugin_onConnectStatusChangeEvent disconected map: %s", mapToString().c_str());
+	if (pluginManager) {
+		pluginManager->onConnectStatusChangeEvent(serverConnectionHandlerID, newStatus, errorNumber);
 	}
 }
 
 void ts3plugin_onClientMoveEvent(uint64 serverConnectionHandlerID, anyID clientID, uint64 oldChannelID, uint64 newChannelID, int visibility, const char* moveMessage) {
-	// TODO: handle moved by server/other client
-
-	Logger::get()->Log("ts3plugin_onClientMoveEvent: %lld %d %lld -> %lld %d '%s'", serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moveMessage);
-	if (oldChannelID == 0) {
-		// joined
-		std::string clientUUID = getClientUUID(serverConnectionHandlerID, clientID);
-		uuidForAvailableClients[clientUUID] = clientID;
+	if (pluginManager) {
+		pluginManager->onClientMoveEvent(serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moveMessage);
 	}
-	else if (newChannelID == 0) {
-		// left
-		for (auto it = uuidForAvailableClients.begin(); it != uuidForAvailableClients.end(); ++it) {
-			if (it->second == clientID) {
-				uuidForAvailableClients.erase(it);
-				break;
-			}
-		}
-	}
-	Logger::get()->Log("ts3plugin_onClientMoveEvent map: %s", mapToString().c_str());
 }
 
 void ts3plugin_onClientMoveMovedEvent(uint64 serverConnectionHandlerID, anyID clientID, uint64 oldChannelID, uint64 newChannelID, int visibility, anyID moverID, const char* moverName, const char* moverUniqueIdentifier, const char* moveMessage) {
-	Logger::get()->Log("ts3plugin_onClientMoveMovedEvent: %lld %d %lld -> %lld %d %d '%d' '%s' '%s'", serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moverID, moverName, moverUniqueIdentifier, moveMessage);
+	if (pluginManager) {
+		pluginManager->onClientMoveMovedEvent(serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moverID, moverName, moverUniqueIdentifier, moveMessage);
+	}
 }
-
-static inline float db2lin_alt2(float db) {
-    if (db <= -200.0f) return 0.0f;
-    else return exp(db/20  * log(10.0f));   // went mad with ambigous call with 10 (identified as int)
-}
-
-static const float rollOff = -6.0f;
-const float rollOffMaxLin = db2lin_alt2(-200.0f);
-static const float distanceMin = 1.0f;
-static const float distanceMax = 50.0f;
 
 void ts3plugin_onCustom3dRolloffCalculationClientEvent(uint64 serverConnectionHandlerID, anyID clientID, float distance, float* volume) {
-	if ((distanceMax > 0) && (distance >= distanceMax)) {
-		*volume = 0.0f;
-	}
-	else if (distance <= distanceMin) {
-		*volume = 1.0f;
-	}
-	else
-	{
-		distance = distance - distanceMin;
-		if (distance <= 1) {
-			*volume = 1.0f;
-		}
-		else {
-			*volume = db2lin_alt2(log2(distance) * rollOff);
-		}
-
-		if (*volume < rollOffMaxLin) {
-			*volume = rollOffMaxLin;
-		}
+	if (pluginManager) {
+		pluginManager->onCustom3dRolloffCalculationClientEvent(serverConnectionHandlerID, clientID, distance, volume);
 	}
 }

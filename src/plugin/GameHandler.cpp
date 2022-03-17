@@ -3,7 +3,7 @@
 
 GameHandler::GameHandler()
 {
-    Logger::get()->Log("GameHandler %s", "init");
+    Logger::get()->Log(LoggerLogLevel::Verbose, "GameHandler init");
 }
 
 GameHandler::~GameHandler()
@@ -13,15 +13,15 @@ GameHandler::~GameHandler()
 
 
 void GameHandler::connect() {
-    Logger::get()->Log("%s", "trying to find processes");
+    Logger::get()->Log(LoggerLogLevel::Info, "trying to find processes");
 
     pid = getProcessByName("GRB.exe");
     if (pid == 0) {
-        Logger::get()->Log("process not found '%s'", "GRB.exe");
+        Logger::get()->LogF(LoggerLogLevel::Info, "process not found '%s'", "GRB.exe");
 
         pid = getProcessByName("GRB_vulkan.exe");
         if (pid == 0) {
-            Logger::get()->Log("process not found '%s'", "GRB_vulkan.exe");
+            Logger::get()->LogF(LoggerLogLevel::Info, "process not found '%s'", "GRB_vulkan.exe");
 
             executable = GRB_EXE::NOT_FOUND;
             throw std::runtime_error("Cant find neither 'GRB.exe' nor 'GRB_vulkan.exe' to init positional audio");
@@ -34,30 +34,30 @@ void GameHandler::connect() {
         executable = GRB_EXE::GRB;
     }
 
-    Logger::get()->Log("%s", "opening process");
+    Logger::get()->Log(LoggerLogLevel::Verbose, "opening process");
     openProcessReadable();
     if (handle == NULL) {
         pid = 0;
         executable = GRB_EXE::NOT_FOUND;
 
-        Logger::get()->Log("%s", "can not open process");
+        Logger::get()->LogF(LoggerLogLevel::Error, "Can not open process (%d)", GetLastError());
 
         throw std::runtime_error("Process can not be opened.");
     }
 
-    Logger::get()->Log("%s", "fetching process base address");
+    Logger::get()->Log(LoggerLogLevel::Verbose, "fetching process base address");
     initBaseAddress();
     if (base_address == 0) {
         close();
         pid = 0;
         executable = GRB_EXE::NOT_FOUND;
 
-        Logger::get()->Log("%s", "not able to fetch process base address");
+        Logger::get()->LogF(LoggerLogLevel::Error, "Not able to fetch process base address (%d)", GetLastError());
 
         throw std::runtime_error("Process base address can not be fetched.");
     }
 
-    Logger::get()->Log("%s", "game initialized");
+    Logger::get()->Log(LoggerLogLevel::Info, "game initialized");
 }
 
 bool GameHandler::isConnected() {
@@ -135,7 +135,7 @@ void GameHandler::openProcessReadable() {
 void GameHandler::close() {
     if (handle != NULL) {
         if (CloseHandle(handle) == 0) {
-            Logger::get()->Log("error closing handle %p: %d", handle, GetLastError());
+            Logger::get()->LogF(LoggerLogLevel::Error, "error closing handle %p: %d", handle, GetLastError());
             handle = NULL;
         }
         else {

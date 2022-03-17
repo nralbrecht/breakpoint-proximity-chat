@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.17)
 
-set(PLUGIN_VERSION "0.1.3")
+set(PLUGIN_VERSION "0.1.4")
 
 project(GRBTS3Plugin
     VERSION "${PLUGIN_VERSION}"
@@ -31,6 +31,8 @@ add_library(ts3plugin
     src/plugin/PluginManager.cpp
     src/plugin/NetworkManager.cpp
     src/plugin/Logger.cpp
+    src/plugin/ClientStateManager.cpp
+    src/plugin/PluginConfig.cpp
 )
 
 target_include_directories(ts3plugin
