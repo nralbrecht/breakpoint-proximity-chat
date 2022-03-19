@@ -1,16 +1,20 @@
 #pragma once
 
+#include <ShlObj_core.h>
+#include <Windows.h>
 #include <fstream>
 #include <string>
 
 #include "nlohmann/json.hpp"
+#include "Logger.h"
 
 
 class PluginConfig
 {
 private:
-    static const std::string CONFIG_FILE_PATH;
-    static PluginConfig* instance;
+    inline static const std::string CONFIG_FILE_PATH = "/grb/config.json";
+    // inline static const std::string CONFIG_FILE_PATH = "C:/Users/nralbrecht/AppData/Roaming/TS3Client/plugins/grb/config.json";
+    inline static PluginConfig* instance = nullptr;
 
     nlohmann::json config;
 

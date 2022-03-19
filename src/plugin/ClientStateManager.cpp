@@ -104,6 +104,10 @@ void ClientStateManager::addAllCurrentClientsToMap(uint64 serverConnectionHandle
 	Logger::get()->Log(LoggerLogLevel::Verbose, "ClientStateManager::addAllCurrentClientsToMap map");
 }
 
+void ClientStateManager::onClientRadioUseChanged(std::function<void (TS3ClientInfo)> onClientRadioUseChangedCallback) {
+	this->onClientRadioUseChangedCallback = onClientRadioUseChangedCallback;
+}
+
 void ClientStateManager::onPositionUpdate(DTO::ServerStateReport serverStateReport) {
     for (const DTO::ClientState& client : serverStateReport) {
         try {
@@ -116,7 +120,15 @@ void ClientStateManager::onPositionUpdate(DTO::ServerStateReport serverStateRepo
 
 			clientInfos[otherClientId].lastKnownPosition = otherPosition;
 			clientInfos[otherClientId].isPositionKnown = true;
-			clientInfos[otherClientId].isUsingRadio = client.isUsingRadio;
+
+			if (clientInfos[otherClientId].isUsingRadio != client.isUsingRadio) {
+				// radio use has changed
+				clientInfos[otherClientId].isUsingRadio = client.isUsingRadio;
+
+				if (onClientRadioUseChangedCallback) {
+					onClientRadioUseChangedCallback(clientInfos[otherClientId]);
+				}
+			}
 
             Logger::get()->LogF(LoggerLogLevel::Verbose, "client: '%s' pos: (%f,%f,%f) radio: %d", client.uuid.c_str(), client.x, client.y, client.z, client.isUsingRadio);
         }

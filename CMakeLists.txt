@@ -9,6 +9,7 @@ project(GRBTS3Plugin
 )
 
 set(CMAKE_CXX_STANDARD 20)
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(ExternalProject)
 
@@ -16,23 +17,32 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(deps/json)
 
 ExternalProject_Add(pluginsdk
-    URL http://dl.4players.de/ts/client/pluginsdk/pluginsdk_3.1.1.1.zip
-    PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/deps/pluginsdk
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
+URL http://dl.4players.de/ts/client/pluginsdk/pluginsdk_3.1.1.1.zip
+PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/deps/pluginsdk
+CONFIGURE_COMMAND ""
+BUILD_COMMAND ""
+INSTALL_COMMAND ""
 )
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/deps/sqlite3)
+# ExternalProject_Add(sqlite3_almagation
+#     URL https://www.sqlite.org/2022/sqlite-amalgamation-3380100.zip
+#     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/deps/sqlite3_almagation
+#     CONFIGURE_COMMAND ""
+#     BUILD_COMMAND ""
+#     INSTALL_COMMAND ""
+# )
 
 # plugin
 add_library(ts3plugin
     SHARED
-    src/plugin/main.cpp
-    src/plugin/GameHandler.cpp
-    src/plugin/PluginManager.cpp
-    src/plugin/NetworkManager.cpp
-    src/plugin/Logger.cpp
-    src/plugin/ClientStateManager.cpp
-    src/plugin/PluginConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/main.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/GameHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/PluginManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/NetworkManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/Logger.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/ClientStateManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/PluginConfig.cpp
 )
 
 target_include_directories(ts3plugin
@@ -48,13 +58,21 @@ set_target_properties(ts3plugin PROPERTIES OUTPUT_NAME "grb_${PLUGIN_VERSION}")
 
 # server
 add_executable(server
-    src/server/main.cpp
-    src/server/StateManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/server/main.cpp
+    ${CMAKE_SOURCE_DIR}/src/server/StateManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/server/PositionLogger.cpp
 )
 
 target_include_directories(server
     PUBLIC "${CMAKE_SOURCE_DIR}/include"
     PUBLIC "${CMAKE_SOURCE_DIR}/deps/asio2"
+    PUBLIC "${CMAKE_SOURCE_DIR}/deps/sqlite3/src"
 )
 
 target_link_libraries(server PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(server PUBLIC sqlite3)
+
+# test_tool
+add_executable(test_tool
+    src/test_tool/main.cpp
+)

@@ -30,24 +30,26 @@ private:
 
     struct TS3Functions ts3Functions;
 
+    std::string pluginId;
     GRB_state_t ownState;
     bool isUsingRadio = false;
 public:
-    static const std::string NAME;
-    static const std::string VERSION;
-    static const int API_VERSION;
-    static const std::string AUTHOR;
-    static const std::string DESCRIPTION;
+    inline static const std::string PluginManager::NAME = "Tom Clancy's Ghost Recon Breakpoint";
+    inline static const std::string PluginManager::VERSION = "0.1.4";
+    inline static const int         PluginManager::API_VERSION = 25;
+    inline static const std::string PluginManager::AUTHOR = "superananas";
+    inline static const std::string PluginManager::DESCRIPTION = "Provides 3D audio and radio communication for Tom Clancy's Ghost Recon Breakpoint.";
 
-    PluginManager(struct TS3Functions ts3Functions);
+    PluginManager(struct TS3Functions ts3Functions, std::string pluginId);
     ~PluginManager();
 
     void radioActivate(bool active);
     void updateOwnState();
     void updatePositions();
+    void playWavFile(std::string fileNameWithoutExtension);
 
     void onHotkeyEvent(const char* keyword);
-    void currentServerConnectionChanged(uint64 serverConnectionHandlerID);
+    void onCurrentServerConnectionChanged(uint64 serverConnectionHandlerID);
     void onConnectStatusChangeEvent(uint64 serverConnectionHandlerID, int newStatus, unsigned int errorNumber);
     void onClientMoveEvent(uint64 serverConnectionHandlerID, anyID clientID, uint64 oldChannelID, uint64 newChannelID, int visibility, const char* moveMessage);
     void onClientMoveMovedEvent(uint64 serverConnectionHandlerID, anyID clientID, uint64 oldChannelID, uint64 newChannelID, int visibility, anyID moverID, const char* moverName, const char* moverUniqueIdentifier, const char* moveMessage);

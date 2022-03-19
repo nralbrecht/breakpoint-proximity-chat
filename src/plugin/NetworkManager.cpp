@@ -10,7 +10,7 @@ NetworkManager::NetworkManager()
 
             if (ec) {
                 this->isConnected = false;
-                Logger::get()->LogF(LoggerLogLevel::Error, "NetworkManager connect failure: %d %s", asio2::last_error_val(), asio2::last_error_msg().c_str());
+                Logger::get()->LogF(LoggerLogLevel::Warn, "NetworkManager connect failure: %d %s", asio2::last_error_val(), asio2::last_error_msg().c_str());
             }
             else {
                 Logger::get()->Log(LoggerLogLevel::Verbose, "NetworkManager success");
@@ -44,7 +44,7 @@ NetworkManager::NetworkManager()
     });
 
     client.async_start(PluginConfig::get()->getValue<std::string>("server_host"), PluginConfig::get()->getValue<int>("server_port"));
-    Logger::get()->LogF(LoggerLogLevel::Info, "NetworkManager connecting to %s:%d", PluginConfig::get()->getValue<std::string>("server_host"), PluginConfig::get()->getValue<int>("server_port"));
+    Logger::get()->LogF(LoggerLogLevel::Info, "NetworkManager connecting to '%s:%d'", PluginConfig::get()->getValue<std::string>("server_host").c_str(), PluginConfig::get()->getValue<int>("server_port"));
 }
 
 NetworkManager::~NetworkManager() {

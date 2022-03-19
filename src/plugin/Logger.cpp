@@ -1,31 +1,23 @@
 #include "Logger.h"
 
 
-Logger* Logger::instance = nullptr;
-std::ofstream Logger::logfile;
-
 Logger::Logger()
 {
-    std::string fileName;
-    // try
-    // {
-    //     fileName = PluginConfig::get()->getValue<std::string>("log_file");
-    // }
-    // catch(const std::exception& e)
-    // {
-    //     fileName = std::filesystem::temp_directory_path().string() + "grb_latest.log";
+    std::string fileName = "";
+    try
+    {
+        fileName = PluginConfig::get()->getValue<std::string>("log_file");
+        maxLogLevel = static_cast<LoggerLogLevel>(PluginConfig::get()->getValue<int>("log_level"));
+    }
+    catch(const std::exception& e)
+    {
+        MessageBox(0, ("could not get 'log_file' path from config (" + std::string(e.what()) + "): '" + fileName + "'").c_str(), "GRB Logger", 0);
+        throw e;
+    }
 
-    //     logfile.open(fileName.c_str(), std::ios::out | std::ios::app);
-    //     logfile << CurrentDateTime() << ":\t Logger could not get 'log_file' path from config (" << e.what() << ")\n";
-    //     logfile.flush();
-    //     logfile.close();
-
-    //     throw e;
-    // }
-    fileName = std::filesystem::temp_directory_path().string() + "grb_latest.log";
-
-    logfile.open(fileName.c_str(), std::ios::out | std::ios::app);
+    logfile.open(fileName, std::ios::out | std::ios::app);
 }
+
 Logger* Logger::get(){
     if (instance == NULL){
         instance = new Logger();
@@ -49,7 +41,7 @@ void Logger::Log(LoggerLogLevel level, const std::string& sMessage) {
         return;
     }
 
-    logfile << CurrentDateTime() << ":\t";
+    logfile << CurrentDateTime() << " [" << loggerLogLevelLables[level] << "]:\t";
     logfile << sMessage << "\n";
     logfile.flush();
 }
@@ -59,7 +51,7 @@ void Logger::Log(LoggerLogLevel level, const char * message) {
         return;
     }
 
-    logfile << CurrentDateTime() << ":\t";
+    logfile << CurrentDateTime() << " [" << loggerLogLevelLables[level] << "]:\t";
     logfile << message << "\n";
 
     logfile.flush();
@@ -80,7 +72,7 @@ void Logger::LogF(LoggerLogLevel level, const char * format, ...) {
     sMessage = new char[nLength];
     vsprintf_s(sMessage, nLength, format, args);
     //vsprintf(sMessage, format, args);
-    logfile << CurrentDateTime() << ":\t";
+    logfile << CurrentDateTime() << " [" << loggerLogLevelLables[level] << "]:\t";
     logfile << sMessage << "\n";
     va_end(args);
 

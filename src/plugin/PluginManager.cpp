@@ -1,20 +1,15 @@
 #include "PluginManager.h"
 
 
-const std::string PluginManager::NAME = "Tom Clancy's Ghost Recon Breakpoint";
-const std::string PluginManager::VERSION = "0.1.4";
-const int PluginManager::API_VERSION = 25;
-const std::string PluginManager::AUTHOR = "superananas";
-const std::string PluginManager::DESCRIPTION = "Provides 3D audio and radio communication for Tom Clancy's Ghost Recon Breakpoint.";
-
-PluginManager::PluginManager(struct TS3Functions ts3Functions)
+PluginManager::PluginManager(struct TS3Functions ts3Functions, std::string pluginId)
     : ts3Functions(ts3Functions)
+    , pluginId(pluginId)
     , gameHandler(std::make_unique<GameHandler>())
     , networkManager(std::make_unique<NetworkManager>())
     , clientStateManager(std::make_unique<ClientStateManager>(ts3Functions))
     , timer(std::make_unique<asio2::timer>())
 {
-    timer->start_timer(PluginManager::gameHandlerReconnectTimerId, std::chrono::milliseconds(2000), [&]() {
+    timer->start_timer(PluginManager::gameHandlerReconnectTimerId, std::chrono::milliseconds(PluginConfig::get()->getValue<int>("reconnect_fequency_ms")), [&]() {
         if (!gameHandler->isConnected()) {
             try {
                 Logger::get()->Log(LoggerLogLevel::Verbose, "trying to connect to game");
@@ -24,12 +19,12 @@ PluginManager::PluginManager(struct TS3Functions ts3Functions)
                 Logger::get()->Log(LoggerLogLevel::Verbose, "connected to game");
             }
             catch(const std::exception& e) {
-                Logger::get()->LogF(LoggerLogLevel::Error, "was not able to connect to game: %s", e.what());
+                Logger::get()->LogF(LoggerLogLevel::Warn, "Was not able to connect to game: %s", e.what());
             }
         }
     });
 
-    timer->start_timer(PluginManager::stateUpdateTimerId, std::chrono::milliseconds(250), [&]() {
+    timer->start_timer(PluginManager::stateUpdateTimerId, std::chrono::milliseconds(PluginConfig::get()->getValue<int>("update_fequency_ms")), [&]() {
         try {
             Logger::get()->Log(LoggerLogLevel::Verbose, "updating state");
 
@@ -45,6 +40,17 @@ PluginManager::PluginManager(struct TS3Functions ts3Functions)
     networkManager->onPositionUpdate([this](DTO::ServerStateReport serverStateReport) {
         clientStateManager->onPositionUpdate(serverStateReport);
         updatePositions();
+    });
+
+    clientStateManager->onClientRadioUseChanged([this](TS3ClientInfo clientInfo) {
+        Logger::get()->LogF(LoggerLogLevel::Verbose, "PluginManager::onClientRadioUseChanged client changed radio use state (%s): %d", clientInfo.uuid.c_str(), clientInfo.isUsingRadio);
+
+        if (clientInfo.isUsingRadio) {
+            playWavFile("mic_click_on");
+	    }
+	    else {
+            playWavFile("mic_click_off");
+        }
     });
 
     Logger::get()->Log(LoggerLogLevel::Info, "PluginManager initialized");
@@ -167,6 +173,26 @@ void PluginManager::updatePositions() {
     }
 }
 
+void PluginManager::playWavFile(std::string fileNameWithoutExtension) {
+    char pluginPath[512];
+	ts3Functions.getPluginPath(pluginPath, 512, pluginId.c_str());
+	std::string path = std::string(pluginPath);
+
+    Logger::get()->LogF(LoggerLogLevel::Verbose, "PluginManager::playWavFile plugin path %s '%s' or '%s'", pluginId.c_str(), path.c_str(), pluginPath);
+
+	std::string to_play = path + "grb/" + fileNameWithoutExtension + ".wav";
+    int error = error = ts3Functions.playWaveFile(ts3Functions.getCurrentServerConnectionHandlerID(), to_play.c_str());
+    if (error == ERROR_file_not_found) {
+        Logger::get()->LogF(LoggerLogLevel::Error, "PluginManager::playWavFile could not find file '%s'", to_play.c_str());
+    }
+	else if (error != ERROR_ok) {
+		Logger::get()->LogF(LoggerLogLevel::Error, "PluginManager::playWavFile could not play (%d) '%s'", error, to_play.c_str());
+	}
+    else {
+        Logger::get()->LogF(LoggerLogLevel::Verbose, "PluginManager::playWavFile playing '%s'", to_play.c_str());
+    }
+}
+
 static inline float db2lin_alt2(float db) {
     if (db <= -200.0f) return 0.0f;
     else return exp(db/20  * log(10.0f));   // went mad with ambigous call with 10 (identified as int)
@@ -214,17 +240,21 @@ void PluginManager::onCustom3dRolloffCalculationClientEvent(uint64 serverConnect
 void PluginManager::onHotkeyEvent(const char* keyword) {
     Logger::get()->LogF(LoggerLogLevel::Verbose, "PluginManager::onHotkeyEvent: %s", keyword);
 
-	if (strncmp(keyword, "radio_activate", 15) == 0) {
+	if (strncmp(keyword, "radio_activate", 15) == 0 && !isUsingRadio) {
+        playWavFile("mic_click_on");
+
         isUsingRadio = true;
-        Logger::get()->Log(LoggerLogLevel::Verbose, "PluginManager: activate radio");
+        Logger::get()->Log(LoggerLogLevel::Info, "PluginManager: activate radio");
 	}
-	else if (strncmp(keyword, "radio_deactivate", 17) == 0){
+	else if (strncmp(keyword, "radio_deactivate", 17) == 0 && isUsingRadio){
+        playWavFile("mic_click_off");
+
         isUsingRadio = false;
-        Logger::get()->Log(LoggerLogLevel::Verbose, "PluginManager: deactivate radio");
+        Logger::get()->Log(LoggerLogLevel::Info, "PluginManager: deactivate radio");
 	}
 }
 
-void PluginManager::currentServerConnectionChanged(uint64 serverConnectionHandlerID) {
+void PluginManager::onCurrentServerConnectionChanged(uint64 serverConnectionHandlerID) {
     clientStateManager->onCurrentServerConnectionChanged(serverConnectionHandlerID);
 }
 

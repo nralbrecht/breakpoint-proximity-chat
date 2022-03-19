@@ -32,6 +32,8 @@ private:
     struct TS3Functions ts3Functions;
     uint64 currentServerConnectionHandlerID;
 
+    std::function<void (TS3ClientInfo)> onClientRadioUseChangedCallback;
+
     void addNewClient(uint64 serverConnectionHandlerID, anyID clientId);
     void removeClient(anyID clientId);
 
@@ -44,6 +46,8 @@ public:
     TS3ClientInfo getClient(uint64 serverConnectionHandlerID, anyID clientID);
     TS3ClientInfo getClientByUUID(std::string uuid);
     std::vector<const TS3ClientInfo*> getKnownClients();
+
+    void onClientRadioUseChanged(std::function<void (TS3ClientInfo)> onClientRadioUseChangedCallback);
 
     void onPositionUpdate(DTO::ServerStateReport serverStateReport);
     void onCurrentServerConnectionChanged(uint64 serverConnectionHandlerID);

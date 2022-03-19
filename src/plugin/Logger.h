@@ -6,6 +6,7 @@
 #include <cstdarg>
 #include <string>
 #include <ctime>
+#include "Windows.h"
 
 #include "PluginConfig.h"
 
@@ -18,14 +19,10 @@ typedef enum LoggerLogLevel {
     Verbose
 } LoggerLogLevel;
 
+static const char *loggerLogLevelLables[] = { "Off", "Error", "Warn", "Info", "Verbose" };
+
 class Logger
 {
-public:
-    void Log(LoggerLogLevel level, const std::string& message);
-    void Log(LoggerLogLevel level, const char * message);
-    void LogF(LoggerLogLevel level, const char * format, ...);
-
-    static Logger* get();
 private:
     Logger();
     Logger(const Logger&){};             // copy constructor is private
@@ -33,8 +30,13 @@ private:
 
     const std::string CurrentDateTime();
 
-    LoggerLogLevel maxLogLevel;
+    inline static Logger* instance = nullptr;
+    inline static std::ofstream logfile;
+    inline static LoggerLogLevel maxLogLevel = LoggerLogLevel::Verbose;
+public:
+    void Log(LoggerLogLevel level, const std::string& message);
+    void Log(LoggerLogLevel level, const char * message);
+    void LogF(LoggerLogLevel level, const char * format, ...);
 
-    static Logger* instance;
-    static std::ofstream logfile;
+    static Logger* get();
 };

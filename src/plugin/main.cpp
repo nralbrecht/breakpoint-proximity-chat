@@ -23,7 +23,7 @@
 
 #define INFODATA_BUFSIZE 128
 
-static char* pluginID = NULL;
+static std::string pluginID;
 static struct TS3Functions ts3Functions;
 std::unique_ptr<PluginManager> pluginManager = NULL;
 
@@ -57,7 +57,7 @@ int ts3plugin_init() {
 	try {
 		Logger::get()->Log(LoggerLogLevel::Verbose, "plugin initializing");
 
-		pluginManager = std::make_unique<PluginManager>(ts3Functions);
+		pluginManager = std::make_unique<PluginManager>(ts3Functions, pluginID);
 
 		Logger::get()->Log(LoggerLogLevel::Verbose, "plugin successful initialized");
     	return 0;
@@ -76,12 +76,6 @@ void ts3plugin_shutdown() {
 		Logger::get()->Log(LoggerLogLevel::Verbose, "shutting down");
 		pluginManager.reset();
 		Logger::get()->Log(LoggerLogLevel::Verbose, "shutdown");
-
-		/* Free pluginID if we registered it */
-		if(pluginID) {
-			free(pluginID);
-			pluginID = NULL;
-		}
 	}
 	catch(const std::exception& e)
 	{
@@ -96,9 +90,9 @@ void ts3plugin_shutdown() {
  * Note the passed pluginID parameter is no longer valid after calling this function, so you must copy it and store it in the plugin.
  */
 void ts3plugin_registerPluginID(const char* id) {
-	const size_t sz = strlen(id) + 1;
-	pluginID = (char*)malloc(sz * sizeof(char));
-	_strcpy(pluginID, sz, id);  /* The id buffer will invalidate after exiting this function */
+	pluginID = std::string(id);
+
+	Logger::get()->LogF(LoggerLogLevel::Verbose, "ts3plugin_registerPluginID pluginId '%s'", pluginID.c_str());
 }
 
 /*
@@ -169,7 +163,7 @@ void ts3plugin_onHotkeyEvent(const char* keyword) {
 // teamspeak connection state management
 void ts3plugin_currentServerConnectionChanged(uint64 serverConnectionHandlerID) {
 	if (pluginManager) {
-		pluginManager->currentServerConnectionChanged(serverConnectionHandlerID);
+		pluginManager->onCurrentServerConnectionChanged(serverConnectionHandlerID);
 	}
 }
 
