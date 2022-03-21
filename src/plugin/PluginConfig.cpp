@@ -4,10 +4,10 @@
 PluginConfig::PluginConfig()
 {
     std::ifstream configFile;
+    std::string configPath = PluginState::PATH + CONFIG_FILE_PATH;
     try
     {
-        MessageBox(0, ("test parsing config: " + std::filesystem::current_path().string() + CONFIG_FILE_PATH).c_str(), "GRB PluginConfig", 0);
-        configFile.open(std::filesystem::current_path().string() + CONFIG_FILE_PATH, std::ios::in);
+        configFile.open(configPath, std::ios::in);
 
         config = nlohmann::json::parse(configFile);
 
@@ -19,18 +19,22 @@ PluginConfig::PluginConfig()
             configFile.close();
         }
 
-        MessageBox(0, ("error parsing config: " + CONFIG_FILE_PATH).c_str(), "GRB PluginConfig", 0);
+        MessageBox(0, ("error parsing config: " + configPath).c_str(), "GRB PluginConfig", 0);
         throw e;
     }
     catch(const std::exception& e) {
-        MessageBox(0, ("could not load config file (" + std::string(e.what()) + "): " + CONFIG_FILE_PATH).c_str(), "GRB PluginConfig", 0);
+        if (configFile.is_open()) {
+            configFile.close();
+        }
+
+        MessageBox(0, ("could not load config file (" + std::string(e.what()) + "): " + configPath).c_str(), "GRB PluginConfig", 0);
     }
 }
 
 PluginConfig* PluginConfig::get(){
     if (instance == nullptr){
         instance = new PluginConfig();
-        Logger::get()->LogF(LoggerLogLevel::Info, "Config was loaded : %s", CONFIG_FILE_PATH.c_str());
+        Logger::get()->LogF(LoggerLogLevel::Info, "Config was loaded : %s", (PluginState::PATH + CONFIG_FILE_PATH).c_str());
     }
     return instance;
 }

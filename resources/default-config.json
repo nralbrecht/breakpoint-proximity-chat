@@ -1,12 +1,29 @@
 {
     "log_file": "grb/grb_latest.log",
     "log_level": 4,
-    "roll_off": -6.0,
-    "roll_off_max": -200.0,
-    "distance_min": 1.0,
-    "distance_max": 50.0,
+
     "server_host": "localhost",
     "server_port": 9002,
+
+    "proximity_roll_off": -6.0,
+    "proximity_roll_off_max": -200.0,
+    "proximity_distance_min": 1.0,
+    "proximity_distance_max": 50.0,
+
+    "radio_roll_off": -6.0,
+    "radio_roll_off_max": -200.0,
+    "radio_distance_min": 200.0,
+    "radio_distance_max": 2000.0,
+
+    "radio_destruction_min": 0.0,
+    "radio_destruction_max": 20.0,
+
+    "freq_low_in": 380.0,
+    "freq_hi_in": 3200.0,
+    "freq_low_out": 350.0,
+    "freq_hi_out": 4900.0,
+
+    "radio_click_volume": -15,
     "reconnect_fequency_ms": 2000,
     "update_fequency_ms": 250
 }

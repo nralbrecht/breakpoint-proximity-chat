@@ -9,6 +9,7 @@
 #include "Windows.h"
 
 #include "PluginConfig.h"
+#include "PluginState.h"
 
 
 typedef enum LoggerLogLevel {

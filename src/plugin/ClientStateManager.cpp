@@ -1,9 +1,8 @@
 #include "ClientStateManager.h"
 
 
-ClientStateManager::ClientStateManager(struct TS3Functions ts3Functions)
-    : ts3Functions(ts3Functions)
-	, currentServerConnectionHandlerID(ts3Functions.getCurrentServerConnectionHandlerID())
+ClientStateManager::ClientStateManager()
+    : currentServerConnectionHandlerID(PluginState::API.getCurrentServerConnectionHandlerID())
 {
 }
 
@@ -33,20 +32,22 @@ std::vector<const TS3ClientInfo*> ClientStateManager::getKnownClients() {
 std::string ClientStateManager::getClientUUID(uint64 serverConnectionHandlerID, anyID clientId) {
 	char* uuidBuffer;
 
-	unsigned int errorCode = ts3Functions.getClientVariableAsString(serverConnectionHandlerID, clientId, ClientProperties::CLIENT_UNIQUE_IDENTIFIER, &uuidBuffer);
+	unsigned int errorCode = PluginState::API.getClientVariableAsString(serverConnectionHandlerID, clientId, ClientProperties::CLIENT_UNIQUE_IDENTIFIER, &uuidBuffer);
 	if (errorCode != ERROR_ok) {
 		Logger::get()->LogF(LoggerLogLevel::Error, "could not get UUID for server %lld and client %d. Error %d", serverConnectionHandlerID, clientId, errorCode);
 		throw std::runtime_error("could not get UUID");
 	}
 
 	std::string uuid(uuidBuffer);
-	ts3Functions.freeMemory(uuidBuffer);
+	PluginState::API.freeMemory(uuidBuffer);
 
 	return uuid;
 }
 
 void ClientStateManager::addNewClient(uint64 serverConnectionHandlerID, anyID clientId) {
+	Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::addNewClient adding client %d", clientId);
 	if (clientInfos.count(clientId) != 0) {
+		Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::addNewClient client %d was already added", clientId);
 		return;
 	}
 
@@ -63,18 +64,20 @@ void ClientStateManager::addNewClient(uint64 serverConnectionHandlerID, anyID cl
 void ClientStateManager::removeClient(anyID clientId) {
 	try
 	{
+		Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::removeClient removing client %d", clientId);
+
 		uuidToClientId.erase(clientInfos.at(clientId).uuid);
 		clientInfos.erase(clientId);
 	}
 	catch(const std::out_of_range& e)
 	{
-		Logger::get()->LogF(LoggerLogLevel::Warn, "was not able to remove client from storage %d", e.what());
+		Logger::get()->LogF(LoggerLogLevel::Warn, "ClientStateManager::removeClient was not able to remove client from storage %d", e.what());
 	}
 }
 
 void ClientStateManager::addAllCurrentClientsToMap(uint64 serverConnectionHandlerID) {
 	int connectionStatus;
-	if (ts3Functions.getConnectionStatus(serverConnectionHandlerID, &connectionStatus) != ERROR_ok) {
+	if (PluginState::API.getConnectionStatus(serverConnectionHandlerID, &connectionStatus) != ERROR_ok) {
 		Logger::get()->Log(LoggerLogLevel::Error, "ClientStateManager::addAllCurrentClientsToMap error could not get connection status");
 		return;
 	}
@@ -83,7 +86,7 @@ void ClientStateManager::addAllCurrentClientsToMap(uint64 serverConnectionHandle
 	}
 
 	anyID* clientList;
-	if(ts3Functions.getClientList(serverConnectionHandlerID, &clientList) != ERROR_ok) {
+	if(PluginState::API.getClientList(serverConnectionHandlerID, &clientList) != ERROR_ok) {
 		Logger::get()->LogF(LoggerLogLevel::Error, "ClientStateManager::addAllCurrentClientsToMap error could not get client list: %lld", serverConnectionHandlerID);
 		return;
 	}
@@ -100,11 +103,15 @@ void ClientStateManager::addAllCurrentClientsToMap(uint64 serverConnectionHandle
 		}
 	}
 
-	ts3Functions.freeMemory(clientList);
+	PluginState::API.freeMemory(clientList);
 	Logger::get()->Log(LoggerLogLevel::Verbose, "ClientStateManager::addAllCurrentClientsToMap map");
 }
 
-void ClientStateManager::onClientRadioUseChanged(std::function<void (TS3ClientInfo)> onClientRadioUseChangedCallback) {
+void ClientStateManager::onClientUpdate(std::function<void (const TS3ClientInfo&)> onClientUpdateCalback) {
+	this->onClientUpdateCalback = onClientUpdateCalback;
+}
+
+void ClientStateManager::onClientRadioUseChanged(std::function<void (const TS3ClientInfo&)> onClientRadioUseChangedCallback) {
 	this->onClientRadioUseChangedCallback = onClientRadioUseChangedCallback;
 }
 
@@ -112,25 +119,31 @@ void ClientStateManager::onPositionUpdate(DTO::ServerStateReport serverStateRepo
     for (const DTO::ClientState& client : serverStateReport) {
         try {
             anyID otherClientId = uuidToClientId.at(client.uuid);
+			TS3ClientInfo& clientInfo = clientInfos.at(otherClientId);
 
             TS3_VECTOR otherPosition;
 			otherPosition.x = client.x;
 			otherPosition.y = client.y;
 			otherPosition.z = client.z;
 
-			clientInfos[otherClientId].lastKnownPosition = otherPosition;
-			clientInfos[otherClientId].isPositionKnown = true;
+			clientInfo.lastKnownPosition = otherPosition;
+			clientInfo.isPositionKnown = true;
 
-			if (clientInfos[otherClientId].isUsingRadio != client.isUsingRadio) {
+			if (clientInfo.isUsingRadio != client.isUsingRadio) {
 				// radio use has changed
-				clientInfos[otherClientId].isUsingRadio = client.isUsingRadio;
+				clientInfo.isUsingRadio = client.isUsingRadio;
 
 				if (onClientRadioUseChangedCallback) {
-					onClientRadioUseChangedCallback(clientInfos[otherClientId]);
+					onClientRadioUseChangedCallback(clientInfo);
 				}
 			}
 
-            Logger::get()->LogF(LoggerLogLevel::Verbose, "client: '%s' pos: (%f,%f,%f) radio: %d", client.uuid.c_str(), client.x, client.y, client.z, client.isUsingRadio);
+			onClientUpdateCalback(clientInfo);
+
+            Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::onPositionUpdate client: '%s' pos: (%f,%f,%f) radio: %d"
+								, clientInfo.uuid.c_str()
+								, clientInfo.lastKnownPosition.x, clientInfo.lastKnownPosition.y, clientInfo.lastKnownPosition.z
+								, clientInfo.isUsingRadio);
         }
         catch(std::out_of_range e) { } // ignore clients not known by the plugin host
     }
@@ -142,7 +155,7 @@ void ClientStateManager::onCurrentServerConnectionChanged(uint64 serverConnectio
 }
 
 void ClientStateManager::onConnectStatusChangeEvent(uint64 serverConnectionHandlerID, int newStatus, unsigned int errorNumber) {
-    Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::onConnectStatusChangeEvent: %lld %d %d", serverConnectionHandlerID, newStatus, errorNumber);
+    Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::onConnectStatusChangeEvent server: %lld status: %d error nr: %d", serverConnectionHandlerID, newStatus, errorNumber);
 
 	if (newStatus == ConnectStatus::STATUS_CONNECTION_ESTABLISHED) {
 		addAllCurrentClientsToMap(serverConnectionHandlerID);
@@ -156,7 +169,7 @@ void ClientStateManager::onConnectStatusChangeEvent(uint64 serverConnectionHandl
 }
 
 void ClientStateManager::onClientMoveEvent(uint64 serverConnectionHandlerID, anyID clientID, uint64 oldChannelID, uint64 newChannelID, int visibility, const char* moveMessage) {
-	Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::onClientMoveEvent: %lld %d %lld -> %lld %d '%s'", serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moveMessage);
+	Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::onClientMoveEvent server: %lld client: %d channel: %lld -> %lld visibility: %d msg: '%s'", serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moveMessage);
 	if (oldChannelID == 0) {
 		// joined
 		addNewClient(serverConnectionHandlerID, clientID);

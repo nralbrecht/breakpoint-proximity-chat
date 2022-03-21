@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.17)
 
-set(PLUGIN_VERSION "0.1.4")
+set(PLUGIN_VERSION "0.1.6")
 
 project(GRBTS3Plugin
     VERSION "${PLUGIN_VERSION}"
@@ -17,21 +17,14 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(deps/json)
 
 ExternalProject_Add(pluginsdk
-URL http://dl.4players.de/ts/client/pluginsdk/pluginsdk_3.1.1.1.zip
-PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/deps/pluginsdk
-CONFIGURE_COMMAND ""
-BUILD_COMMAND ""
-INSTALL_COMMAND ""
+    URL http://dl.4players.de/ts/client/pluginsdk/pluginsdk_3.1.1.1.zip
+    PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/deps/pluginsdk
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
 )
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/sqlite3)
-# ExternalProject_Add(sqlite3_almagation
-#     URL https://www.sqlite.org/2022/sqlite-amalgamation-3380100.zip
-#     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/deps/sqlite3_almagation
-#     CONFIGURE_COMMAND ""
-#     BUILD_COMMAND ""
-#     INSTALL_COMMAND ""
-# )
 
 # plugin
 add_library(ts3plugin
@@ -43,12 +36,31 @@ add_library(ts3plugin
     ${CMAKE_SOURCE_DIR}/src/plugin/Logger.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/ClientStateManager.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/PluginConfig.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/RadioAudioProcessor.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Bessel.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Biquad.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Butterworth.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Cascade.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/ChebyshevI.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/ChebyshevII.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Custom.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Design.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Documentation.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Elliptic.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Filter.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Legendre.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Param.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/PoleFilter.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/RBJ.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/RootFinder.cpp
+    ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/State.cpp
 )
 
 target_include_directories(ts3plugin
     PUBLIC "${CMAKE_SOURCE_DIR}/include"
 	PUBLIC "${CMAKE_SOURCE_DIR}/deps/pluginsdk/src/pluginsdk/include"
     PUBLIC "${CMAKE_SOURCE_DIR}/deps/asio2"
+    PUBLIC "${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/include"
 )
 
 add_dependencies(ts3plugin pluginsdk)
@@ -75,4 +87,8 @@ target_link_libraries(server PUBLIC sqlite3)
 # test_tool
 add_executable(test_tool
     src/test_tool/main.cpp
+)
+
+target_include_directories(test_tool
+    PUBLIC "${CMAKE_SOURCE_DIR}/deps/pluginsdk/src/pluginsdk/include"
 )

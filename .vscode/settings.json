@@ -87,6 +87,10 @@
         "xloctime": "cpp",
         "xtree": "cpp",
         "*.ipp": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "*.def": "cpp",
+        "*.rh": "cpp",
+        "cwctype": "cpp",
+        "numbers": "cpp"
     }
 }

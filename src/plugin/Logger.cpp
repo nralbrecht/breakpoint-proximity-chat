@@ -6,16 +6,18 @@ Logger::Logger()
     std::string fileName = "";
     try
     {
-        fileName = PluginConfig::get()->getValue<std::string>("log_file");
+        fileName = PluginState::PATH + PluginConfig::get()->getValue<std::string>("log_file");
         maxLogLevel = static_cast<LoggerLogLevel>(PluginConfig::get()->getValue<int>("log_level"));
+
+        if (!logfile.is_open()) {
+            logfile.open(fileName, std::ios::out | std::ios::app);
+        }
     }
     catch(const std::exception& e)
     {
         MessageBox(0, ("could not get 'log_file' path from config (" + std::string(e.what()) + "): '" + fileName + "'").c_str(), "GRB Logger", 0);
         throw e;
     }
-
-    logfile.open(fileName, std::ios::out | std::ios::app);
 }
 
 Logger* Logger::get(){

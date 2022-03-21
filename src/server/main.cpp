@@ -62,8 +62,7 @@ int main(int argc, char const *argv[]) {
     server.bind_recv([&server, &stateManager, &recievedMessageCount](std::shared_ptr<asio2::tcp_session> & session_ptr, std::string_view s) {
         session_ptr->no_delay(true);
 
-        try
-        {
+        try {
             DTO::ClientState clientState = nlohmann::json::parse(s).get<DTO::ClientState>();
             stateManager.putClientState(session_ptr->hash_key(), clientState);
             recievedMessageCount++;

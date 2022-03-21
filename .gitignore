@@ -4,3 +4,4 @@ build
 pluginsdk
 .idea
 .eclipse
+resources/audio_sources

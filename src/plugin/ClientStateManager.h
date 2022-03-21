@@ -3,6 +3,8 @@
 #include "teamspeak/public_definitions.h"
 #include "teamspeak/public_errors.h"
 #include "ts3_functions.h"
+
+#include "PluginState.h"
 #include "Logger.h"
 #include "dto.h"
 
@@ -11,7 +13,6 @@
 #include <string>
 #include <memory>
 #include <vector>
-
 
 typedef struct TS3ClientInfo {
     anyID clientId;
@@ -29,10 +30,10 @@ private:
     std::unordered_map<std::string, anyID> uuidToClientId;
     std::unordered_map<anyID, TS3ClientInfo> clientInfos;
 
-    struct TS3Functions ts3Functions;
     uint64 currentServerConnectionHandlerID;
 
-    std::function<void (TS3ClientInfo)> onClientRadioUseChangedCallback;
+    std::function<void (const TS3ClientInfo&)> onClientUpdateCalback;
+    std::function<void (const TS3ClientInfo&)> onClientRadioUseChangedCallback;
 
     void addNewClient(uint64 serverConnectionHandlerID, anyID clientId);
     void removeClient(anyID clientId);
@@ -40,14 +41,15 @@ private:
     std::string getClientUUID(uint64 serverConnectionHandlerID, anyID clientId);
     void addAllCurrentClientsToMap(uint64 serverConnectionHandlerID);
 public:
-    ClientStateManager(struct TS3Functions ts3Functions);
+    ClientStateManager();
     ~ClientStateManager();
 
     TS3ClientInfo getClient(uint64 serverConnectionHandlerID, anyID clientID);
     TS3ClientInfo getClientByUUID(std::string uuid);
     std::vector<const TS3ClientInfo*> getKnownClients();
 
-    void onClientRadioUseChanged(std::function<void (TS3ClientInfo)> onClientRadioUseChangedCallback);
+    void onClientUpdate(std::function<void (const TS3ClientInfo&)> onClientUpdateCalback);
+    void onClientRadioUseChanged(std::function<void (const TS3ClientInfo&)> onClientRadioUseChangedCallback);
 
     void onPositionUpdate(DTO::ServerStateReport serverStateReport);
     void onCurrentServerConnectionChanged(uint64 serverConnectionHandlerID);

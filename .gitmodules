@@ -7,3 +7,6 @@
 [submodule "deps/sqlite3"]
 	path = deps/sqlite3
 	url = https://github.com/alex85k/sqlite3-cmake.git
+[submodule "deps/DSPFilters"]
+	path = deps/DSPFilters
+	url = https://github.com/thorwe/DSPFilters.git

@@ -14,20 +14,16 @@
 #include "teamspeak/public_rare_definitions.h"
 #include "teamspeak/clientlib_publicdefinitions.h"
 #include "ts3_functions.h"
+
 #include "main.h"
+#include "PluginState.h"
 #include "PluginManager.h"
-#include "Logger.h"
 
 
 #define _strcpy(dest, destSize, src) { strncpy(dest, src, destSize - 1); (dest)[destSize - 1] = '\0'; }
 
-#define INFODATA_BUFSIZE 128
+std::unique_ptr<PluginManager> pluginManager = nullptr;
 
-static std::string pluginID;
-static struct TS3Functions ts3Functions;
-std::unique_ptr<PluginManager> pluginManager = NULL;
-
-/*********************************** Required functions ************************************/
 
 const char* ts3plugin_name() {
 	return PluginManager::NAME.c_str();
@@ -50,14 +46,23 @@ const char* ts3plugin_description() {
 }
 
 void ts3plugin_setFunctionPointers(const struct TS3Functions funcs) {
-    ts3Functions = funcs;
+	PluginState::API = funcs;
+}
+
+void ts3plugin_registerPluginID(const char* id) {
+	PluginState::ID = std::string(id);
 }
 
 int ts3plugin_init() {
 	try {
+		char pluginPath[1024];
+		PluginState::API.getPluginPath(pluginPath, 1024, PluginState::ID.c_str());
+		PluginState::PATH = std::string(pluginPath);
+		Logger::get()->LogF(LoggerLogLevel::Verbose, "ts3plugin_init id: '%s' path: '%s'", PluginState::ID.c_str(), PluginState::PATH.c_str());
+
 		Logger::get()->Log(LoggerLogLevel::Verbose, "plugin initializing");
 
-		pluginManager = std::make_unique<PluginManager>(ts3Functions, pluginID);
+		pluginManager = std::make_unique<PluginManager>();
 
 		Logger::get()->Log(LoggerLogLevel::Verbose, "plugin successful initialized");
     	return 0;
@@ -65,7 +70,7 @@ int ts3plugin_init() {
 	catch(const std::exception& e) {
 		// Error intializing plugin manager. Return 1 to indicate error.
 		Logger::get()->LogF(LoggerLogLevel::Error, "plugin init error: '%s'", e.what());
-		ts3Functions.logMessage(e.what(), LogLevel_ERROR, "GRB", ts3Functions.getCurrentServerConnectionHandlerID());
+		PluginState::API.logMessage(e.what(), LogLevel_ERROR, "GRB", PluginState::API.getCurrentServerConnectionHandlerID());
 		return 1;
 	}
 }
@@ -83,46 +88,22 @@ void ts3plugin_shutdown() {
 	}
 }
 
-/****************************** Optional functions ********************************/
-/*
- * If the plugin wants to use error return codes, plugin commands, hotkeys or menu items, it needs to register a command ID. This function will be
- * automatically called after the plugin was initialized. This function is optional. If you don't use these features, this function can be omitted.
- * Note the passed pluginID parameter is no longer valid after calling this function, so you must copy it and store it in the plugin.
- */
-void ts3plugin_registerPluginID(const char* id) {
-	pluginID = std::string(id);
-
-	Logger::get()->LogF(LoggerLogLevel::Verbose, "ts3plugin_registerPluginID pluginId '%s'", pluginID.c_str());
-}
-
-/*
- * Implement the following three functions when the plugin should display a line in the server/channel/client info.
- * If any of ts3plugin_infoTitle, ts3plugin_infoData or ts3plugin_freeMemory is missing, the info text will not be displayed.
- */
-
-/* Static title shown in the left column in the info frame */
 const char* ts3plugin_infoTitle() {
 	return "GRB info";
 }
 
-/*
- * Dynamic content shown in the right column in the info frame. Memory for the data string needs to be allocated in this
- * function. The client will call ts3plugin_freeMemory once done with the string to release the allocated memory again.
- * Check the parameter "type" if you want to implement this feature only for specific item types. Set the parameter
- * "data" to NULL to have the client ignore the info data.
- */
 void ts3plugin_infoData(uint64 serverConnectionHandlerID, uint64 id, enum PluginItemType type, char** data) {
 	if (type == PLUGIN_CLIENT) {
 		char* uuid;
 
-		if(ts3Functions.getClientVariableAsString(serverConnectionHandlerID, (anyID)id, CLIENT_UNIQUE_IDENTIFIER, &uuid) != ERROR_ok) {
+		if(PluginState::API.getClientVariableAsString(serverConnectionHandlerID, (anyID)id, CLIENT_UNIQUE_IDENTIFIER, &uuid) != ERROR_ok) {
 			Logger::get()->Log(LoggerLogLevel::Error, "ts3plugin_infoData: Error getting client nickname");
 			return;
 		}
 
-		*data = (char*)malloc(INFODATA_BUFSIZE * sizeof(char));  /* Must be allocated in the plugin! */
-		snprintf(*data, INFODATA_BUFSIZE, "The UUID is [I]\"%s\"[/I]", uuid);  /* bbCode is supported. HTML is not supported */
-		ts3Functions.freeMemory(uuid);
+		*data = (char*)malloc(128 * sizeof(char));  /* Must be allocated in the plugin! */
+		snprintf(*data, 128, "The UUID is [I]\"%s\"[/I]", uuid);  /* bbCode is supported. HTML is not supported */
+		PluginState::API.freeMemory(uuid);
 	}
 	else {
 		data = NULL;
@@ -188,5 +169,11 @@ void ts3plugin_onClientMoveMovedEvent(uint64 serverConnectionHandlerID, anyID cl
 void ts3plugin_onCustom3dRolloffCalculationClientEvent(uint64 serverConnectionHandlerID, anyID clientID, float distance, float* volume) {
 	if (pluginManager) {
 		pluginManager->onCustom3dRolloffCalculationClientEvent(serverConnectionHandlerID, clientID, distance, volume);
+	}
+}
+
+void ts3plugin_onEditPlaybackVoiceDataEvent(uint64 serverConnectionHandlerID, anyID clientID, short* samples, int sampleCount, int channels) {
+	if (pluginManager) {
+		pluginManager->onEditPlaybackVoiceDataEvent(serverConnectionHandlerID, clientID, samples, sampleCount, channels);
 	}
 }

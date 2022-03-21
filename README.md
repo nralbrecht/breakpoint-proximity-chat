@@ -11,15 +11,31 @@ git submodule update
 # TODO
 - Distance correction
     - 72 meter ingame == 51.8 meter config
-- Propper server position logging
-- Logging is disabled for the client
-    - Clear log file each run?
-    - Size cap?
-- Radio clicks
-- Radio sound processing
-- When quiting the game the own position is not removed from server
+- Quiting game mutes people repeated
+    - Own position is not removed from server until unloading plugin
+- TS3 has to be restarted instead of reloading to hear the other person reliably
+- Fix sound direction when using drone
+- Fix double radio clicks
+- Radio quality dependent on distance
+- Radio jamming
+    - By azrael
+    - EMP's
+- Enemys detection range is better when player are louder
+- Radio should get more quiet with distance
+    - Configurable Min/Max distance
 
 # Change log
+
+
+## v0.1.6
+- Radio sound processing
+- Configuration options for processing
+- Fix broken logging system
+
+## v0.1.5
+- Radio clicks
+- Server position logging into sqlite3
+- Make radio click volume configurable
 
 ## v0.1.4
 - Add config

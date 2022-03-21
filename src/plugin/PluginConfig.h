@@ -6,14 +6,14 @@
 #include <string>
 
 #include "nlohmann/json.hpp"
-#include "Logger.h"
 
+#include "Logger.h"
+#include "PluginState.h"
 
 class PluginConfig
 {
 private:
-    inline static const std::string CONFIG_FILE_PATH = "/grb/config.json";
-    // inline static const std::string CONFIG_FILE_PATH = "C:/Users/nralbrecht/AppData/Roaming/TS3Client/plugins/grb/config.json";
+    inline static const std::string CONFIG_FILE_PATH = "grb/config.json";
     inline static PluginConfig* instance = nullptr;
 
     nlohmann::json config;
