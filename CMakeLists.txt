@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.17)
 
-set(PLUGIN_VERSION "0.1.6")
+set(PLUGIN_VERSION "0.1.8")
 
 project(GRBTS3Plugin
     VERSION "${PLUGIN_VERSION}"
@@ -30,13 +30,18 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/deps/sqlite3)
 add_library(ts3plugin
     SHARED
     ${CMAKE_SOURCE_DIR}/src/plugin/main.cpp
-    ${CMAKE_SOURCE_DIR}/src/plugin/GameHandler.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/PluginManager.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/NetworkManager.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/Logger.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/ClientStateManager.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/PluginConfig.cpp
     ${CMAKE_SOURCE_DIR}/src/plugin/RadioAudioProcessor.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/Vector3f.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/game/GameHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/game/ProcessWrapper.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/game/ProcessWrapper.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/game/GRB.cpp
+    ${CMAKE_SOURCE_DIR}/src/plugin/game/GRBVulkan.cpp
     ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Bessel.cpp
     ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Biquad.cpp
     ${CMAKE_SOURCE_DIR}/deps/DSPFilters/shared/DSPFilters/source/Butterworth.cpp

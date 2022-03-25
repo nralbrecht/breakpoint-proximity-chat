@@ -6,7 +6,8 @@
 #include <cstdarg>
 #include <string>
 #include <ctime>
-#include "Windows.h"
+#include <Windows.h>
+#include <mutex>
 
 #include "PluginConfig.h"
 #include "PluginState.h"
@@ -31,6 +32,7 @@ private:
 
     const std::string CurrentDateTime();
 
+    inline static std::mutex lock;
     inline static Logger* instance = nullptr;
     inline static std::ofstream logfile;
     inline static LoggerLogLevel maxLogLevel = LoggerLogLevel::Verbose;

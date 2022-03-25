@@ -62,16 +62,15 @@ PluginManager::PluginManager()
 }
 
 PluginManager::~PluginManager() {
-    try
-    {
+    try {
         Logger::get()->Log(LoggerLogLevel::Verbose, "destructing PluginManager timers");
         timer.reset();
 
-        Logger::get()->Log(LoggerLogLevel::Verbose, "destructing PluginManager gamehandler");
-        gameHandler.reset();
-
         Logger::get()->Log(LoggerLogLevel::Verbose, "destructing PluginManager networkmanager");
         networkManager.reset();
+
+        Logger::get()->Log(LoggerLogLevel::Verbose, "destructing PluginManager gamehandler");
+        gameHandler.reset();
 
         Logger::get()->Log(LoggerLogLevel::Verbose, "destructed PluginManager");
     }
@@ -79,16 +78,6 @@ PluginManager::~PluginManager() {
     {
         Logger::get()->LogF(LoggerLogLevel::Error, "error destructing PluginManager: %s", e.what());
     }
-}
-
-TS3_VECTOR convertToVector(float *vector3) {
-    TS3_VECTOR vector;
-
-    vector.x = vector3[0];
-    vector.y = vector3[1];
-    vector.z = vector3[2];
-
-    return vector;
 }
 
 void PluginManager::updateOwnState() {
@@ -101,7 +90,7 @@ void PluginManager::updateOwnState() {
 
             ownState = gameHandler->getState();
 
-            PluginState::API.systemset3DListenerAttributes(serverConnectionHandlerID, &convertToVector(ownState.earPosition), &convertToVector(ownState.earForward), &convertToVector(ownState.earUp));
+            PluginState::API.systemset3DListenerAttributes(serverConnectionHandlerID, &ownState.earPosition, &ownState.earForward, &ownState.earUp);
 
             int connectionStatus;
             if (PluginState::API.getConnectionStatus(serverConnectionHandlerID, &connectionStatus) != ERROR_ok) {
@@ -132,9 +121,9 @@ void PluginManager::updateOwnState() {
 
             DTO::ClientState ownStateDTO;
             ownStateDTO.isUsingRadio = isUsingRadio;
-            ownStateDTO.x = ownState.mouthPosition[0];
-            ownStateDTO.y = ownState.mouthPosition[1];
-            ownStateDTO.z = ownState.mouthPosition[2];
+            ownStateDTO.x = ownState.mouthPosition.x;
+            ownStateDTO.y = ownState.mouthPosition.y;
+            ownStateDTO.z = ownState.mouthPosition.z;
             ownStateDTO.uuid = std::string(ownUUID);
 
             PluginState::API.freeMemory(ownUUID);
@@ -203,31 +192,31 @@ void PluginManager::onCustom3dRolloffCalculationClientEvent(uint64 serverConnect
         }
         else {
             if ((proximityDistanceMax > 0) && (distance >= proximityDistanceMax)) {
-		*volume = 0.0f;
-	}
+                *volume = 0.0f;
+            }
             else if (distance <= proximityDistanceMin) {
-		*volume = 1.0f;
-	}
-	else
-	{
+                *volume = 1.0f;
+            }
+            else
+            {
                 distance = distance - proximityDistanceMin;
-		if (distance <= 1) {
-			*volume = 1.0f;
-		}
-		else {
+                if (distance <= 1) {
+                    *volume = 1.0f;
+                }
+                else {
                     *volume = db2lin_alt2(log2(distance) * proximityRollOff);
-		}
+                }
 
                 if (*volume < proximityRollOffMaxLin) {
                     *volume = proximityRollOffMaxLin;
-		}
+                }
             }
         }
     }
     catch(std::exception) {
         // ignore client info if is not known or not using radio
         *volume = 1.0f;
-	}
+    }
 }
 
 void PluginManager::onHotkeyEvent(const char* keyword) {
@@ -282,11 +271,10 @@ void PluginManager::onEditPlaybackVoiceDataEvent(uint64 serverConnectionHandlerI
 
             if (clientInfo.isPositionKnown) {
                 float distance = std::abs(std::sqrt(
-                    (clientInfo.lastKnownPosition.x - ownState.earPosition[0]) * (clientInfo.lastKnownPosition.x - ownState.earPosition[0]) +
-                    (clientInfo.lastKnownPosition.y - ownState.earPosition[1]) * (clientInfo.lastKnownPosition.y - ownState.earPosition[1]) +
-                    (clientInfo.lastKnownPosition.z - ownState.earPosition[2]) * (clientInfo.lastKnownPosition.z - ownState.earPosition[2])
+                    (clientInfo.lastKnownPosition.x - ownState.earPosition.x) * (clientInfo.lastKnownPosition.x - ownState.earPosition.x) +
+                    (clientInfo.lastKnownPosition.y - ownState.earPosition.y) * (clientInfo.lastKnownPosition.y - ownState.earPosition.y) +
+                    (clientInfo.lastKnownPosition.z - ownState.earPosition.z) * (clientInfo.lastKnownPosition.z - ownState.earPosition.z)
                 ));
-
 
                 if ((radioDistanceMax > 0) && (distance >= radioDistanceMax)) {
                     destruction = radioDestructionMax;
@@ -308,7 +296,6 @@ void PluginManager::onEditPlaybackVoiceDataEvent(uint64 serverConnectionHandlerI
                         destruction = radioDestructionMax;
                     }
                 }
-
             }
 
             // Logger::get()->LogF(LoggerLogLevel::Verbose, "PluginManager::onEditPlaybackVoiceDataEvent (%d @ %lld): %d %d distance: ", clientID, serverConnectionHandlerID, sampleCount, channels, distance, );

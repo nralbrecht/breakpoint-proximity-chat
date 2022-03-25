@@ -51,11 +51,22 @@ void ClientStateManager::addNewClient(uint64 serverConnectionHandlerID, anyID cl
 		return;
 	}
 
+	anyID ownClientId = 0;
+	if (PluginState::API.getClientID(serverConnectionHandlerID, &ownClientId) != ERROR_ok) {
+		Logger::get()->LogF(LoggerLogLevel::Error, "ClientStateManager::addNewClient error getClientID: %d @ %lld", ownClientId, serverConnectionHandlerID);
+		return;
+	}
+	if (clientId == ownClientId) {
+		Logger::get()->LogF(LoggerLogLevel::Verbose, "ClientStateManager::addNewClient dont add self as a client: %d", clientId);
+		return;
+	}
+
 	TS3ClientInfo clientInfo;
 	clientInfo.clientId = clientId;
 	clientInfo.serverConnectionHandlerID = serverConnectionHandlerID;
 	clientInfo.uuid = getClientUUID(serverConnectionHandlerID, clientId);
 	clientInfo.isPositionKnown = false;
+	clientInfo.isUsingRadio = false;
 
 	clientInfos[clientInfo.clientId] = clientInfo;
 	uuidToClientId[clientInfo.uuid] = clientInfo.clientId;

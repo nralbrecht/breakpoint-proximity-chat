@@ -13,12 +13,13 @@
 #include "dto.h"
 #include "Logger.h"
 #include "VolumeUtil.h"
-#include "GameHandler.h"
+#include "game/GameHandler.h"
 #include "PluginState.h"
 #include "PluginConfig.h"
 #include "NetworkManager.h"
 #include "ClientStateManager.h"
 #include "RadioAudioProcessor.h"
+#include "game/GameState.h"
 
 
 class PluginManager
@@ -33,11 +34,11 @@ private:
     static const unsigned int stateUpdateTimerId = 0;
     static const unsigned int gameHandlerReconnectTimerId = 1;
 
-    GRB_state_t ownState;
+    GameState ownState;
     bool isUsingRadio = false;
 public:
     inline static const std::string PluginManager::NAME = "Tom Clancy's Ghost Recon Breakpoint";
-    inline static const std::string PluginManager::VERSION = "0.1.6";
+    inline static const std::string PluginManager::VERSION = "0.1.8";
     inline static const int         PluginManager::API_VERSION = 25;
     inline static const std::string PluginManager::AUTHOR = "superananas";
     inline static const std::string PluginManager::DESCRIPTION = "Provides 3D audio and radio communication for Tom Clancy's Ghost Recon Breakpoint.";

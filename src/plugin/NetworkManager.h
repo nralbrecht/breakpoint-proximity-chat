@@ -4,7 +4,7 @@
 
 #include "asio2/tcp/tcp_client.hpp"
 #include "nlohmann/json.hpp"
-#include "GameHandler.h"
+#include "game/GameHandler.h"
 #include "Logger.h"
 #include "dto.h"
 

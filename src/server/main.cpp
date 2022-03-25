@@ -39,7 +39,7 @@ int main(int argc, char const *argv[]) {
     server.start_timer(123456789, std::chrono::milliseconds(reportSendFrequency), [&server, &stateManager]() {
         if (server.session_count() > 0) {
             nlohmann::json report = stateManager.getStateReport();
-            std::string serializedReport = report.dump();
+            std::string serializedReport = report.dump() + "\n";
 
             server.foreach_session([&serializedReport](std::shared_ptr<asio2::tcp_session> & session_ptr){
                 session_ptr->async_send(serializedReport);
@@ -48,10 +48,15 @@ int main(int argc, char const *argv[]) {
     });
 
     server.start_timer(123456788, std::chrono::milliseconds(reportLogFrequency), [&server, &stateManager]() {
-        nlohmann::json report = stateManager.getStateReport();
-        std::string serializedReport = report.dump();
+        if (server.session_count() > 0) {
+            nlohmann::json report = stateManager.getStateReport();
 
-        printf("%s\tcurrent report: %s\n", CurrentDateTime().c_str(), serializedReport.c_str());
+            if (report.size() > 0) {
+                std::string serializedReport = report.dump();
+
+                printf("%s\tcurrent report: %s\n", CurrentDateTime().c_str(), serializedReport.c_str());
+            }
+        }
     });
 
     server.start_timer(123456787, std::chrono::milliseconds(positionLogFrequency), [&stateManager, &positionLogger]() {
@@ -116,7 +121,7 @@ int main(int argc, char const *argv[]) {
                 server.foreach_session([](std::shared_ptr<asio2::tcp_session> & session_ptr){
                     printf("%zd, ", session_ptr->hash_key());
                 });
-                puts("\n");
+                puts("");
             }
             else if (input == 'c') {
                 printf("%s\t%zd clients with reports\n", CurrentDateTime().c_str(), stateManager.getReportCount());

@@ -13,19 +13,34 @@ git submodule update
     - 72 meter ingame == 51.8 meter config
 - Quiting game mutes people repeated
     - Own position is not removed from server until unloading plugin
-- TS3 has to be restarted instead of reloading to hear the other person reliably
-- Fix sound direction when using drone
-- Fix double radio clicks
-- Radio quality dependent on distance
+- TS3 has to be restarted instead of reloading to hear the other person reliably?
+    - Likely a problem with local state
+    - List of other users not correctly initialized
+- Fix sound direction
+    - When using drone
+    - When hearing radio
 - Radio jamming
     - By azrael
     - EMP's
-- Enemys detection range is better when player are louder
+- Make enemy detection range larger when clients are speaking
 - Radio should get more quiet with distance
     - Configurable Min/Max distance
 
 # Change log
 
+## v0.1.8
+- Radio destruction audio effect is increased with distance
+    - radio_destruction_min @ radio_distance_min
+    - radio_destruction_max @ radio_distance_max
+- Add linebrakes to end of network message as an atempt to reduce mixed and broken JSON
+- Decuple game and process from GameHandler
+- Make logger thread safe
+
+## v0.1.7
+- Fix plugin crash on unload due to wrong order of unloading components
+- Fix radio click on new client join
+- Fix double radio clicks
+- Fix swaped avatar position and camera position pointer for GRB_vulcan.exe
 
 ## v0.1.6
 - Radio sound processing
@@ -33,9 +48,12 @@ git submodule update
 - Fix broken logging system
 
 ## v0.1.5
-- Radio clicks
+- Radio clicks on start and stop transmitting
+    - grb/mic_click_on.wav
+    - grb/mic_click_off.wav
 - Server position logging into sqlite3
 - Make radio click volume configurable
+- Use relative paths to logfile and expect config in grb/config.json
 
 ## v0.1.4
 - Add config

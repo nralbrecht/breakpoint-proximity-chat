@@ -56,7 +56,7 @@ void NetworkManager::sendPositionUpdate(DTO::ClientState ownState) {
     nlohmann::json stateJson = ownState;
     Logger::get()->LogF(LoggerLogLevel::Verbose, "NetworkManager sending position update: %s", stateJson.dump().c_str());
 
-    client.async_send(stateJson.dump());
+    client.async_send(stateJson.dump() + "\n");
 }
 
 void NetworkManager::onPositionUpdate(std::function<void (DTO::ServerStateReport)> onPositionUpdateCallback) {

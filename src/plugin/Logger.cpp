@@ -43,9 +43,13 @@ void Logger::Log(LoggerLogLevel level, const std::string& sMessage) {
         return;
     }
 
+    lock.lock();
+
     logfile << CurrentDateTime() << " [" << loggerLogLevelLables[level] << "]:\t";
     logfile << sMessage << "\n";
     logfile.flush();
+
+    lock.unlock();
 }
 
 void Logger::Log(LoggerLogLevel level, const char * message) {
@@ -53,10 +57,13 @@ void Logger::Log(LoggerLogLevel level, const char * message) {
         return;
     }
 
+    lock.lock();
+
     logfile << CurrentDateTime() << " [" << loggerLogLevelLables[level] << "]:\t";
     logfile << message << "\n";
-
     logfile.flush();
+
+    lock.unlock();
 }
 
 void Logger::LogF(LoggerLogLevel level, const char * format, ...) {
@@ -74,11 +81,15 @@ void Logger::LogF(LoggerLogLevel level, const char * format, ...) {
     sMessage = new char[nLength];
     vsprintf_s(sMessage, nLength, format, args);
     //vsprintf(sMessage, format, args);
+
+    lock.lock();
+
     logfile << CurrentDateTime() << " [" << loggerLogLevelLables[level] << "]:\t";
     logfile << sMessage << "\n";
-    va_end(args);
-
     logfile.flush();
 
+    lock.unlock();
+
+    va_end(args);
     delete [] sMessage;
 }
