@@ -6,7 +6,7 @@ ProcessWrapper::ProcessWrapper(std::string processName) {
     if (pid == 0) {
         Logger::get()->LogF(LoggerLogLevel::Error, "Can not find process '%s' (%d)", processName.c_str(), GetLastError());
 
-        throw std::runtime_error("Process can not be opened.");
+        throw std::runtime_error("Can not find process with given name.");
     }
 
     Logger::get()->Log(LoggerLogLevel::Verbose, "opening process");

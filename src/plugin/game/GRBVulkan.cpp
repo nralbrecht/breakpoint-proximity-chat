@@ -1,9 +1,9 @@
 #include "GRBVulkan.h"
 
 
-GRBVulkan::GRBVulkan() {
-    game = std::make_unique<ProcessWrapper>("GRB_vulkan.exe");
-
+GRBVulkan::GRBVulkan()
+    : game(std::make_unique<ProcessWrapper>("GRB_vulkan.exe"))
+{
     identityAddress = game->getBaseAddress() + 0x62F2844;
     avatarPositionAddress = game->getBaseAddress() + 0x63E7080;
     cameraPositionAddress = game->getBaseAddress() + 0x63E7230;

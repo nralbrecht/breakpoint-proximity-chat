@@ -25,6 +25,9 @@ git submodule update
 - Make enemy detection range larger when clients are speaking
 - Radio should get more quiet with distance
     - Configurable Min/Max distance
+- Set mouth position to avatar when in vehicle
+- Create class diagram
+- Look into publishing a TS3 addon
 
 # Change log
 

@@ -1,9 +1,9 @@
 #include "GRB.h"
 
 
-GRB::GRB() {
-    game = std::make_unique<ProcessWrapper>("GRB.exe");
-
+GRB::GRB()
+    : game(std::make_unique<ProcessWrapper>("GRB.exe"))
+{
     identityAddress = game->getBaseAddress() + 0x5A63514;
     avatarPositionAddress = game->getBaseAddress() + 0x5B57D50;
     cameraPositionAddress = game->getBaseAddress() + 0x5B57F00;
