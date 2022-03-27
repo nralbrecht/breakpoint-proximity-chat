@@ -2,8 +2,8 @@
     "log_file": "grb/grb_latest.log",
     "log_level": 4,
 
-    "server_host": "localhost",
-    "server_port": 9002,
+    "server_host": "nralbrecht.de",
+    "server_port": 9099,
 
     "proximity_roll_off": -6.0,
     "proximity_roll_off_max": -200.0,

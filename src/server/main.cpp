@@ -1,6 +1,8 @@
 #include <fstream>
 #include <iostream>
-#include <conio.h>
+#ifdef _WIN32
+    #include <conio.h>
+#endif
 
 #include "asio2/tcp/tcp_server.hpp"
 #include "nlohmann/json.hpp"
@@ -8,33 +10,44 @@
 #include "StateManager.h"
 #include "dto.h"
 
-const std::string CurrentDateTime()
-{
-    time_t     now = time(NULL);
+const std::string CurrentDateTime() {
+    time_t     now = time(0);
     struct tm  tstruct;
     char       buf[80];
-    localtime_s(&tstruct, &now);
+    tstruct = *localtime(&now);
+    // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
+    // for more information about date/time format
     strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+
     return buf;
 }
 
 int main(int argc, char const *argv[]) {
-    int port = 9002;
+    int port = 9099;
     int reportLogFrequency = 2000;
     int reportSendFrequency = 250;
     long recievedMessageCount = 0;
     int positionLogFrequency = 1000;
+    std::string positionLogFile = "positions.db";
 
-    if (argc < 2) {
-        std::cout << "Port not supplyed as a prameter choosing " << port << std::endl;
+
+    if (argc > 2) {
+        positionLogFile = std::string(argv[2]);
     }
     else {
+        std::cout << "Position log file path not supplyed as a prameter. Choosing '" << positionLogFile << "'" << std::endl;
+    }
+
+    if (argc > 1) {
         port = std::stoi(argv[1]);
+    }
+    else {
+        std::cout << "Port not supplyed as a prameter. Choosing " << port << std::endl;
     }
 
     asio2::tcp_server server;
     StateManager stateManager;
-    PositionLogger positionLogger;
+    PositionLogger positionLogger(positionLogFile);
 
     server.start_timer(123456789, std::chrono::milliseconds(reportSendFrequency), [&server, &stateManager]() {
         if (server.session_count() > 0) {
@@ -110,6 +123,7 @@ int main(int argc, char const *argv[]) {
         server.start("0.0.0.0", port);
 
         while (true) {
+#ifdef _WIN32
             char input = _getch_nolock();
 
             if (input == 'r') {
@@ -129,6 +143,7 @@ int main(int argc, char const *argv[]) {
             else if (input == 'm') {
                 printf("%s\t%ld recieved updates\n", CurrentDateTime().c_str(), recievedMessageCount);
             }
+#endif
         }
 
         return 0;

@@ -1,8 +1,10 @@
 #include "PositionLogger.h"
 
 
-PositionLogger::PositionLogger() {
-    int rc = sqlite3_open("positions.db", &database);
+PositionLogger::PositionLogger(std::string filename) {
+    std::cout << "Position logger is writing to '" << filename << "'" << std::endl;
+
+    int rc = sqlite3_open(filename.c_str(), &database);
 
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(database));

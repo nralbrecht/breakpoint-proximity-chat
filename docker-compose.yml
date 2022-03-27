@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  breakpoint-proximity-chat:
+    build: .
+    container_name: "breakpoint-proximity-chat"
+    image: ghcr.io/nralbrecht/breakpoint-proximity-chat:latest
+    restart: always
+    ports:
+      - "9099:9099"
+    volumes:
+      - ./volume:/breakpoint-proximity-chat/database

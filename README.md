@@ -13,25 +13,31 @@ git submodule update
     - 72 meter ingame == 51.8 meter config
 - Quiting game mutes people repeated
     - Own position is not removed from server until unloading plugin
-- TS3 has to be restarted instead of reloading to hear the other person reliably?
+- TS3 has to be restarted instead of reloading to hear the other person reliably
     - Likely a problem with local state
     - List of other users not correctly initialized
-- Fix sound direction
-    - When using drone
-    - When hearing radio
+- Make voice unidirectional
+    - when using drone
+    - when hearing radio
+    - when driving in a vehicle?
 - Radio jamming
-    - By azrael
-    - EMP's
+    - when detected by azrael
+    - when stuned by EMP
+    - Could mybe be implement by detecting when the drone cant be launched
 - Make enemy detection range larger when clients are speaking
 - Radio should get more quiet with distance
     - Configurable Min/Max distance
 - Set mouth position to avatar when in vehicle
 - Create class diagram
 - Look into publishing a TS3 addon
+- Look into ZeroMQ for message transport
 
 # Change log
 
 ## v0.1.8
+- Change default port to 9099
+- Make server compatible with linux
+- Add Dockerfile to build server container
 - Radio destruction audio effect is increased with distance
     - radio_destruction_min @ radio_distance_min
     - radio_destruction_max @ radio_distance_max

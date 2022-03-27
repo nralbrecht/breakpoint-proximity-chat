@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.17)
+cmake_minimum_required (VERSION 3.13)
 
 set(PLUGIN_VERSION "0.1.8")
 
@@ -23,6 +23,10 @@ ExternalProject_Add(pluginsdk
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
 )
+
+if(NOT WIN32)
+    find_library(DLPATH NAMES libdl.so dl)
+endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/sqlite3)
 
@@ -88,6 +92,12 @@ target_include_directories(server
 
 target_link_libraries(server PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(server PUBLIC sqlite3)
+
+if(NOT WIN32)
+    include(FindThreads)
+    target_link_libraries(server PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+    target_link_libraries(server PUBLIC dl)
+endif()
 
 # test_tool
 add_executable(test_tool
